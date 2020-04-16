@@ -10,15 +10,25 @@ import matplotlib as mpl                                                    # Fo
 import matplotlib.pyplot as plt                                             # For plotting
 from mpl_toolkits.axes_grid1 import make_axes_locatable                     # For plotting, to add colorbar nicely
 import numpy as np                                                          # For reading of files
+import pandas as pd                                                         # For reading of files
 import sys
 import nest                                                                 # For main simulation
 import argparse                                                             # For options
 from datetime import datetime                                               # For giving messages
 
-# Auximilary functions
+# Auxiliary: Formatted printer for messages
 def ntnstatus(message):
 	print("\n"+datetime.now().strftime("%b %d %H:%M:%S")+" neurotop-nest: "+message, flush=True)
 
+# Auxiliary: Get weight of synapse, as average weight between appropriate layers
+def getweight(source,target):
+	source_layer = 55 - [int(lay/(source+1)) for lay in reversed(mc2_layers_summed)].index(0)
+	target_layer = 55 - [int(lay/(target+1)) for lay in reversed(mc2_layers_summed)].index(0)
+	w = mc2_weights.iloc[source_layer-1,target_layer-1]
+	if np.isnan(w):
+		return 0
+	else:
+		return w
 
 # Read arguments
 parser = argparse.ArgumentParser(
@@ -36,9 +46,15 @@ nest.ResetKernel()                                                          # Re
 root = sys.argv[0][:-11]                                                    # Current working directory
                                         
 # Load circuit info
-mc2_address = root+'structure/adjmat_mc2.npz'                               # Address of mc2 adjacency matrix
+ntnstatus('Loading mc2 structural information')
+mc2_address = root+'structure/adjmat_mc2.npz'                               # mc2 adjacency matrix
 adj = np.load(mc2_address)
-mc2_edges = list(zip(adj['row'], adj['col']))                               # Get edges between neurons
+mc2_edges = list(zip(adj['row'], adj['col']))                               # mc2 edges between neurons
+distance_address = root+'structure/distances_mc2.npz'                       # mc2 physical distances between neurons
+mc2_delays = np.load(distance_address)['data']                              # Interpret distances as delays
+mc2_layers = np.load(root+'structure/layersize_mc2.npy')                    # Size of mc2 layers (for interpreting structural information)
+mc2_layers_summed = [sum(mc2_layers[:i]) for i in range(55)]                # Summed layer sizes for easier access
+mc2_weights = pd.read_pickle(root+'structure/synapses_mc2.pkl')             # Interpret distances as delays
 nnum = 31346                                                                # Number of neurons in circuit
 
 # Load stimulus info
@@ -50,16 +66,17 @@ stim_strength = 1000000
 
 # Declare parameters
 augold2 = (1., 0.866667, 0.)                                                # Declare color scheme
-weight = 20.0                                                               # Maximumax weight of synapses
-delay = 1.0                                                                 # Delay between synapses
+weight_factor = 5.0                                                         # Weight of synapses (used as a multiplying factor)
+delay_factor = 0.005                                                        # Delay between neurons (used as a multiplying factor)
 exp_length = args.time                                                      # length of experiment, in milliseconds
 
 # Create the circuit
 ntnstatus('Constructing circuit')
 network = nest.Create('iaf_cond_exp_sfa_rr', n=nnum, params=None)
 for i in range(len(mc2_edges[0])):
-    nest.Connect((mc2_edges[0][i]+1,),(mc2_edges[1][i]+1,),
-                    syn_spec={'weight': np.random.random()*weight, 'delay': delay})
+    nest.Connect((mc2_edges[0][i]+1,),(mc2_edges[1][i]+1,), syn_spec={
+    	'weight': getweight(mc2_edges[0][i],mc2_edges[1][i])*weight_factor,
+    	'delay': mc2_delays[i]*delay_factor})
 
 # Define stimulus and connect it to neurons
 ntnstatus('Creating thalamic nerves for stimulus')
@@ -83,7 +100,7 @@ for n in range(1,nnum+1):
 #    nest.SetStatus((n,), {"I_e": 250.0+np.random.rand()*stim*.5})
 
 for fire in firing_pattern:
-    nest.SetStatus((stimuli[fire[0]],), params={
+    nest.SetStatus((stimuli[int(fire[0])],), params={
          'start':float(fire[1]),
          'stop':float(fire[2]),
          'rate': float(fire[3])*stim_strength})
