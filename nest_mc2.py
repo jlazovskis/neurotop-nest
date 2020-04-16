@@ -20,15 +20,11 @@ from datetime import datetime                                               # Fo
 def ntnstatus(message):
 	print("\n"+datetime.now().strftime("%b %d %H:%M:%S")+" neurotop-nest: "+message, flush=True)
 
-# Auxiliary: Get weight of synapse, as average weight between appropriate layers
-def getweight(source,target):
+# Auxiliary: Get layer pairs from neuron pairs
+def getlayers(source,target):
 	source_layer = 55 - [int(lay/(source+1)) for lay in reversed(mc2_layers_summed)].index(0)
 	target_layer = 55 - [int(lay/(target+1)) for lay in reversed(mc2_layers_summed)].index(0)
-	w = mc2_weights.iloc[source_layer-1,target_layer-1]
-	if np.isnan(w):
-		return 0
-	else:
-		return w
+	return (source_layer-1,target_layer-1)
 
 # Read arguments
 parser = argparse.ArgumentParser(
@@ -54,7 +50,8 @@ distance_address = root+'structure/distances_mc2.npz'                       # mc
 mc2_delays = np.load(distance_address)['data']                              # Interpret distances as delays
 mc2_layers = np.load(root+'structure/layersize_mc2.npy')                    # Size of mc2 layers (for interpreting structural information)
 mc2_layers_summed = [sum(mc2_layers[:i]) for i in range(55)]                # Summed layer sizes for easier access
-mc2_weights = pd.read_pickle(root+'structure/synapses_mc2.pkl')             # Interpret distances as delays
+mc2_weights = pd.read_pickle(root+'structure/synapses_mc2.pkl')             # Average number of synapses between layers
+mc2_transmits = pd.read_pickle(root+'structure/failures_mc2.pkl')           # Average number of failures between layers
 nnum = 31346                                                                # Number of neurons in circuit
 
 # Load stimulus info
@@ -62,21 +59,25 @@ fibres_address = root+'stimuli/'+args.fibres                                # Ad
 fibres = np.load(fibres_address,allow_pickle=True)                          # Get which neurons the fibres connect to
 stimulus_address = root+'stimuli/'+args.stimulus
 firing_pattern = np.load(stimulus_address,allow_pickle=True)                # When the nerve fibres fire, each element of the form (fibre_id,start_time,end_time,firing_rate)
-stim_strength = 1000000
+stim_strength = 2000000
 
 # Declare parameters
 augold2 = (1., 0.866667, 0.)                                                # Declare color scheme
-weight_factor = 5.0                                                         # Weight of synapses (used as a multiplying factor)
-delay_factor = 0.005                                                        # Delay between neurons (used as a multiplying factor)
-exp_length = args.time                                                      # length of experiment, in milliseconds
+weight_factor = 10.0                                                        # Weight of synapses (used as a multiplying factor)
+delay_factor = 0.1                                                          # Delay between neurons (used as a multiplying factor)
+exp_length = args.time                                                      # Length of experiment, in milliseconds
+max_fail = 100                                                              # Number of failures to consider as no transmission for a synapse
 
 # Create the circuit
 ntnstatus('Constructing circuit')
 network = nest.Create('iaf_cond_exp_sfa_rr', n=nnum, params=None)
 for i in range(len(mc2_edges[0])):
+    layerpair = getlayers(mc2_edges[0][i],mc2_edges[1][i])
     nest.Connect((mc2_edges[0][i]+1,),(mc2_edges[1][i]+1,), syn_spec={
-    	'weight': getweight(mc2_edges[0][i],mc2_edges[1][i])*weight_factor,
-    	'delay': mc2_delays[i]*delay_factor})
+        'model': 'bernoulli_synapse',
+        'weight': (0 if np.isnan(mc2_weights.iloc[layerpair]) else mc2_weights.iloc[layerpair])*weight_factor,
+        'delay': mc2_delays[i]*delay_factor,
+        'p_transmit': 1-(max_fail if np.isnan(mc2_transmits.iloc[layerpair]) else mc2_transmits.iloc[layerpair])/max_fail})
 
 # Define stimulus and connect it to neurons
 ntnstatus('Creating thalamic nerves for stimulus')
@@ -131,4 +132,4 @@ ax_volt.set_ylabel('neuron index')
 ax_volt.set_xlabel('time in ms')
 
 fig.colorbar(v, ax=[ax_stim,ax_volt], orientation='vertical', label="voltage")
-plt.savefig(root+'report.png')
+plt.savefig(root+'report'+datetime.now().strftime("%s")+'.png')
