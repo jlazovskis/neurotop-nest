@@ -13,17 +13,25 @@ import numpy as np                                                          # Fo
 import sys
 import nest                                                                 # For main simulation
 import argparse                                                             # For options
+from datetime import datetime                                               # For giving messages
+
+# Auximilary functions
+def ntnstatus(message):
+	print("\n"+datetime.now().strftime("%b %d %H:%M:%S")+" neurotop-nest: "+message, flush=True)
+
 
 # Read arguments
 parser = argparse.ArgumentParser(
     description='Simplified Blue Brain Project reconstructions and validations',
-    usage='python nest_mc2.py [--fibres=fibres.npy] [--stimulus=stim.npy] [--title="Plot title"]')
+    usage='python nest_mc2.py [--fibres=fibres.npy] [--stimulus=stim.npy] [--time=100] [--title="Plot title"]')
 parser.add_argument('--fibres', type=str, default='fibres.npy', help='Filename of fibres in folder "stimuli". List of lists of GIDs. Length is number of thalamic fibers.')
 parser.add_argument('--stimulus', type=str, default='constant_firing.npy', help='Filename of firing pattern of stimulus in folder "stimuli". List of tuples (index,start,stop,rate). Index has to be within range of length of fibres option.')
+parser.add_argument('--time', type=int, default=100, help='Length, in milliseconds, of experiment. Must be an integer. Default is 100.')
 parser.add_argument('--title', type=str, default='Spikemeter and voltmeter reports', help='Title for plot produced at the end.')
 args = parser.parse_args()
 
 # Set up
+#nest.set_verbosity("M_ERROR")                                              # Uncomment this to make NEST quiet
 nest.ResetKernel()                                                          # Reset nest
 root = sys.argv[0][:-11]                                                    # Current working directory
                                         
@@ -44,26 +52,24 @@ stim_strength = 1000000
 augold2 = (1., 0.866667, 0.)                                                # Declare color scheme
 weight = 20.0                                                               # Maximumax weight of synapses
 delay = 1.0                                                                 # Delay between synapses
-exp_length = 100                                                            # length of experiment, in milliseconds
+exp_length = args.time                                                      # length of experiment, in milliseconds
 
 # Create the circuit
-print("Constructing circuit...", end='', flush=True)
+ntnstatus('Constructing circuit')
 network = nest.Create('iaf_cond_exp_sfa_rr', n=nnum, params=None)
 for i in range(len(mc2_edges[0])):
     nest.Connect((mc2_edges[0][i]+1,),(mc2_edges[1][i]+1,),
                     syn_spec={'weight': np.random.random()*weight, 'delay': delay})
-print("done")
 
 # Define stimulus and connect it to neurons
-print("Creating thalamic nerves for stimulus...", end='', flush=True)
+ntnstatus('Creating thalamic nerves for stimulus')
 stimuli = nest.Create('poisson_generator', n=len(fibres))
 for stimulus in range(len(fibres)):
     for j in fibres[stimulus]:
         nest.Connect((stimuli[stimulus],),(j+1,))
-print("done")
 
 # Record voltage and spikes
-print("Connecting thalamic nerves to circuit...", end='', flush=True)
+ntnstatus("Connecting thalamic nerves to circuit")
 voltmeter = nest.Create('voltmeter', params={
      'label': 'volts',
      'withtime': True,
@@ -81,15 +87,13 @@ for fire in firing_pattern:
          'start':float(fire[1]),
          'stop':float(fire[2]),
          'rate': float(fire[3])*stim_strength})
-print("done")
 
 # Run simulation
-print("Running simulation of "+str(exp_length)+"ms...", end='', flush=True)
+ntnstatus("Running simulation of "+str(exp_length)+"ms")
 nest.Simulate(float(exp_length))
-print("done")
 
 # Print reports of experiment
-print("Creating spike and volt plots...", end='', flush=True)
+ntnstatus("Creating spike and volt plots")
 stims = nest.GetStatus(spikedetector)[0]['events']
 volts = nest.GetStatus(voltmeter)[0]['events']['V_m']
 
@@ -111,4 +115,3 @@ ax_volt.set_xlabel('time in ms')
 
 fig.colorbar(v, ax=[ax_stim,ax_volt], orientation='vertical', label="voltage")
 plt.savefig(root+'report.png')
-print("done")
