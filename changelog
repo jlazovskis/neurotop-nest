@@ -1,0 +1,5 @@
+2020-03-23 Toy model with 8 neurons created in NEST
+2020-04-02 Structure of mc2 implemented with adjacency matrix
+2020-04-15 GitHub repository initiated
+2020-04-16 New options (with argparse package): thalamic fibres file, firing pattern file, length of experiment, title of output plot
+2020-04-16 Synapse weights, delays, and connection probabilities implemented to reflect mc2 structure
