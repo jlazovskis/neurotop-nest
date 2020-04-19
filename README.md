@@ -17,7 +17,7 @@ The main goals are for this project to be:
 We will assume you are working in an Anaconda environment. First install NEST simulator and the relevant Python packages:
 
 	conda install -c conda-forge nest-simulator 
-	conda install numpy pandas pickle
+	conda install numpy pandas pickle h5py
 
 Next, clone this project. You only need the `nest_mc2.py` file for everything to work, but the other files are necessary for more complex constructions and experiments.
 
@@ -28,6 +28,25 @@ Simply call:
 	python nest_mc2.py
 
 This will run a simulation for 100ms on the 31346-neuron mc2 Blue Brain column, with lots of strong stimuli sent to the circuit. A file `report.png` will be produced, giving a visual overview of the experiment.
+
+### Arguments
+
+The following arguments can be given the Python call initianting the file. All are optional. Options must be given as `--option=value`, flags as `--flag`. These descriptions are also found in the `parser.add_argument` lines in the main `nest_mc2.py` file.
+
+| Option              | Type    | Default                                | Description                                                                                                   |
+| ------------------- | ------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `--fibres`          | string  | `fibres.npy`                           | Filename of fibres (must be in folder "stimuli"). List of lists of GIDs. Length is number of thalamic fibers. |
+| `--stimulus`        | string  | `constant_firing.npy`                  | Filename of firing pattern of stimulus (must be in folder "stimuli"). List of tuples (index,start,stop,rate). |
+| `--time`            | integer | `100`                                  | Length, in milliseconds, of experiment.                                                                       |
+| `--outplottitle`    | string  | `Spikemeter and voltmeter reports`     | Title of the output plot.                                                                                     |
+
+
+| Flag                | If not called (default)                                                                               | If called                                           |
+| ------------------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| `--no_mc2approx`    | Approximate structure (distances between neurons, weights / delays / failures of synapses) is used.   | Nothing beyond mc2 neuron connections is used.      |
+| `--shuffle`         | Adjacency matrix is used as given.                                                                    | Rows and columns of adjacency matrix are shuffled.  |
+| `--outspikes`       | Output `h5` file is made of the spiketrains.                                                          | No file of spikes is made.                          |
+| `--no_outplot`      | A plot of the spiketrains and voltages is output.                                                     | No plot is output.                                  |
 
 ## Benchmarks
 
