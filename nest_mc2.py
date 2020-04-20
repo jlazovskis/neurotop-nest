@@ -34,7 +34,7 @@ parser = argparse.ArgumentParser(
 	usage='python nest_mc2.py [--fibres=fibres.npy] [--stimulus=stim.npy] [--time=100] [--title="Plot title"]')
 
 # Arguments: structure
-parser.add_argument('--no_mc2approx', action='store_false', help='If not included, uses mc2 data for a better approximation.')
+parser.add_argument('--no_mc2approx', action='store_true', help='If not included, uses mc2 data for a better approximation.')
 parser.add_argument('--shuffle', action='store_true', help='If included, randomly shuffles the mc2 adjacency matrix.')
 
 # Arguments: stimulus
@@ -44,7 +44,7 @@ parser.add_argument('--time', type=int, default=100, help='Length, in millisecon
 
 # Arguments: outputs
 parser.add_argument('--outspikes', action='store_true', help='If included, outputs a file "spikes.h5" containing two lists, one of the GIDs of spiking neurons, the other of times at which they spiked. This is the dictionary NEST produces with getstatus for the events of the spikedetector.')
-parser.add_argument('--no_outplot', action='store_false', help='If not included, outputs visual plot of spikes and voltages of experiment.')
+parser.add_argument('--no_outplot', action='store_true', help='If not included, outputs visual plot of spikes and voltages of experiment.')
 parser.add_argument('--outplottitle', type=str, default='Spikemeter and voltmeter reports', help='Title for plot produced at the end. ')
 args = parser.parse_args()
 
@@ -58,13 +58,14 @@ ntnstatus('Loading mc2 structural information')
 mc2_address = root+'structure/adjmat_mc2.npz'                               # mc2 adjacency matrix
 adj = np.load(mc2_address)
 mc2_edges = list(zip(adj['row'], adj['col']))                               # mc2 edges between neurons
-distance_address = root+'structure/distances_mc2.npz'                       # mc2 physical distances between neurons
-mc2_delays = np.load(distance_address)['data']                              # Interpret distances as delays
-mc2_layers = np.load(root+'structure/layersize_mc2.npy')                    # Size of mc2 layers (for interpreting structural information)
-mc2_layers_summed = [sum(mc2_layers[:i]) for i in range(55)]                # Summed layer sizes for easier access
-mc2_weights = pd.read_pickle(root+'structure/synapses_mc2.pkl')             # Average number of synapses between layers
-mc2_transmits = pd.read_pickle(root+'structure/failures_mc2.pkl')           # Average number of failures between layers
 nnum = 31346                                                                # Number of neurons in circuit
+if not args.no_mc2_approx:
+	distance_address = root+'structure/distances_mc2.npz'                   # mc2 physical distances between neurons
+	mc2_delays = np.load(distance_address)['data']                          # Interpret distances as delays
+	mc2_layers = np.load(root+'structure/layersize_mc2.npy')                # Size of mc2 layers (for interpreting structural information)
+	mc2_layers_summed = [sum(mc2_layers[:i]) for i in range(55)]            # Summed layer sizes for easier access
+	mc2_weights = pd.read_pickle(root+'structure/synapses_mc2.pkl')         # Average number of synapses between layers
+	mc2_transmits = pd.read_pickle(root+'structure/failures_mc2.pkl')       # Average number of failures between layers
 
 # Load stimulus info
 fibres_address = root+'stimuli/'+args.fibres                                # Address of thalamic nerve fibres data
@@ -89,7 +90,7 @@ if args.shuffle:
 ntnstatus('Constructing circuit')
 network = nest.Create('iaf_cond_exp_sfa_rr', n=nnum, params=None)
 for i in range(len(mc2_edges[0])):
-	if args.mc2approx:  
+	if not args.no_mc2approx:  
 		layerpair = getlayers(mc2_edges[0][i],mc2_edges[1][i])
 		nest.Connect((mc2_edges[0][i]+1,),(mc2_edges[1][i]+1,), syn_spec={
 			'weight' : (0 if np.isnan(mc2_weights.iloc[layerpair]) else mc2_weights.iloc[layerpair])*weight_factor,
@@ -140,7 +141,7 @@ if args.outspikes:
 		f.create_dataset(k, data=spikes[k])
 	f.close()
 
-if args.no_outplot:
+if not args.no_outplot:
 	ntnstatus("Creating spike and volt plots")
 	spikes = nest.GetStatus(spikedetector)[0]['events']
 	volts = nest.GetStatus(voltmeter)[0]['events']['V_m']
