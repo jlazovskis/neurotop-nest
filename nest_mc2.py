@@ -17,6 +17,7 @@ import h5py                                                                 # Fo
 import matplotlib as mpl                                                    # For plotting
 import matplotlib.pyplot as plt                                             # For plotting
 from mpl_toolkits.axes_grid1 import make_axes_locatable                     # For plotting, to add colorbar nicely
+import scipy.sparse                                                         # For exporting transimssion response matrices
 
 # Auxiliary: Formatted printer for messages
 def ntnstatus(message):
@@ -43,8 +44,11 @@ parser.add_argument('--stimulus', type=str, default='constant_firing.npy', help=
 parser.add_argument('--time', type=int, default=100, help='Length, in milliseconds, of experiment. Must be an integer. Default is 100.')
 
 # Arguments: outputs
-parser.add_argument('--outspikes', action='store_true', help='If included, outputs a file "spikes.h5" containing two lists, one of the GIDs of spiking neurons, the other of times at which they spiked. This is the dictionary NEST produces with getstatus for the events of the spikedetector.')
-parser.add_argument('--no_outplot', action='store_true', help='If not included, outputs visual plot of spikes and voltages of experiment.')
+parser.add_argument('--make_spikes', action='store_true', help='If included, outputs a file "spikes.h5" containing two lists, one of the GIDs of spiking neurons, the other of times at which they spiked. This is the dictionary NEST produces with getstatus for the events of the spikedetector.')
+parser.add_argument('--make_tr', action='store_true', help='If included, outputs a file "tr.npz" containing transmission reponse matrices.')
+parser.add_argument('--t1', type=float, default=5.0, help='t1 for transmission reponse matrices')
+parser.add_argument('--t2', type=float, default=10.0, help='t2 for transmission reponse matrices')
+parser.add_argument('--no_plot', action='store_true', help='If not included, outputs visual plot of spikes and voltages of experiment.')
 parser.add_argument('--outplottitle', type=str, default='Spikemeter and voltmeter reports', help='Title for plot produced at the end. ')
 args = parser.parse_args()
 
@@ -59,7 +63,7 @@ mc2_address = root+'structure/adjmat_mc2.npz'                               # mc
 adj = np.load(mc2_address)
 mc2_edges = list(zip(adj['row'], adj['col']))                               # mc2 edges between neurons
 nnum = 31346                                                                # Number of neurons in circuit
-if not args.no_mc2_approx:
+if not args.no_mc2approx:
 	distance_address = root+'structure/distances_mc2.npz'                   # mc2 physical distances between neurons
 	mc2_delays = np.load(distance_address)['data']                          # Interpret distances as delays
 	mc2_layers = np.load(root+'structure/layersize_mc2.npy')                # Size of mc2 layers (for interpreting structural information)
@@ -131,9 +135,9 @@ for fire in firing_pattern:
 ntnstatus("Running simulation of "+str(exp_length)+"ms")
 nest.Simulate(float(exp_length))
 
-# Make reports of experiment
+# Report: spiketrains
 timestamp = datetime.now().strftime("%s")
-if args.outspikes:
+if args.make_spikes:
 	ntnstatus("Creating h5 file of spikes")
 	f = h5py.File('spikes_'+timestamp+'.h5','w')
 	spikes = nest.GetStatus(spikedetector)[0]['events']
@@ -141,7 +145,43 @@ if args.outspikes:
 		f.create_dataset(k, data=spikes[k])
 	f.close()
 
-if not args.no_outplot:
+# Report: transmission response matrices
+if args.make_tr:
+	t1 = args.t1
+	t2 = args.t2
+	ntnstatus("Creating transmission response matrices with t1="+str(t1)+" and t2="+str(t2))
+	# Get key times
+	times = [t1*i for i in range(int(exp_length/t1)+1)]
+	# Get ordered times and indices of spikes
+	spikes = nest.GetStatus(spikedetector)[0]['events']
+	tr_times = sorted(spikes['times'])
+	tr_neurons = [x for _,x in sorted(zip(spikes['times'], spikes['senders']))]
+	# Get adjacencies as dense matrix
+	adjmat = scipy.sparse.coo_matrix((adj['data'], (adj['row'],adj['col'])), shape=(nnum,nnum)).toarray()
+	matrices = []
+	for i in range(len(times)-1):
+		print('    Step '+str(i)+' as arr_'+str(i)+': ['+str(times[i])+','+str(times[i+1])+'] in ['+str(times[i])+','+str(min(times[i]+t2,exp_length))+']',flush=True)
+		M = np.zeros((nnum,nnum),dtype='int8')
+		t1_start = np.searchsorted(tr_times, times[i])
+		t1_end = np.searchsorted(tr_times, times[i+1])
+		t2_end = np.searchsorted(tr_times, times[i]+t2)
+		# Source vertex spiked in [0, t1], sink in [0,t2]
+		sources = np.unique(tr_neurons[t1_start:t1_end])
+		targets = np.unique(tr_neurons[t1_start:t2_end])
+		target_vector = scipy.sparse.coo_matrix((np.ones(len(targets),dtype='int8'), (np.zeros(len(targets),dtype='int8'), targets)), shape=(1,nnum+1)).toarray()[0][1:]
+		for source in sources:
+			M[source-1] = np.logical_and(adjmat[source-1],target_vector)
+		# Source vertex spiked in [t1,t2], sink in [t1,t2]
+		sources = np.unique(tr_neurons[t1_end:t2_end])
+		target_vector = scipy.sparse.coo_matrix((np.ones(len(sources),dtype='int8'), (np.zeros(len(sources),dtype='int8'), sources)), shape=(1,nnum+1)).toarray()[0][1:]
+		for source in sources:
+			M[source-1] = np.logical_and(adjmat[source-1],target_vector)
+		matrices.append(M)
+	print('    Compressing '+str(len(matrices))+' dense matrices into npz file',flush=True)
+	np.savez_compressed(root+'transmissionresponse_'+timestamp, *matrices)
+
+# Report: spike and voltage plots
+if not args.no_plot:
 	ntnstatus("Creating spike and volt plots")
 	spikes = nest.GetStatus(spikedetector)[0]['events']
 	volts = nest.GetStatus(voltmeter)[0]['events']['V_m']
