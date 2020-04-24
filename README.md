@@ -29,9 +29,9 @@ Simply call:
 
 This will run a simulation for 100ms on the 31346-neuron mc2 Blue Brain column, with lots of strong stimuli sent to the circuit. A file `report.png` will be produced, giving a visual overview of the experiment.
 
-### Arguments
+### Options
 
-The following arguments can be given the Python call initianting the file. All are optional. Options must be given as `--option=value`, flags as `--flag`. These descriptions are also found in the `parser.add_argument` lines in the main `nest_mc2.py` file.
+The following options can be given the Python call initianting the file, as `--option_name=option_value`. Default values of options are indicated below, which (along with descriptions) are in the main file.
 
 | Option              | Type    | Default                                | Description                                                                                                   |
 | ------------------- | ------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
@@ -41,7 +41,12 @@ The following arguments can be given the Python call initianting the file. All a
 | `--outplottitle`    | string  | `Spikemeter and voltmeter reports`     | Title of the output plot.                                                                                     |
 | `--t1`              | float   | `5.0`                                  | Transmission reponse: time for source to spike                                                                |
 | `--t2`              | float   | `10.0`                                 | Transmission reponse: time for sink to spike                                                                  |
+| `--flagser`         | string  | `../flagser/flagser`                   | Local location of flagser. Only relevant if `--count_simplices` flag is called.                               |
 
+
+### Flags
+
+The following flags can be given the Python call initianting the file, as `--flag_name`. Default behavior when flags are not called is indicated below.
 
 | Flag                | If not called (default)                                                                               | If called                                            |
 | ------------------- | ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
@@ -49,7 +54,9 @@ The following arguments can be given the Python call initianting the file. All a
 | `--shuffle`         | Adjacency matrix is used as given.                                                                    | Rows and columns of adjacency matrix are shuffled.   |
 | `--make_spikes`     | No spike trains are computed.                                                                         | Output `h5` file of the spiketrains.                 |
 | `--make_tr`         | No transmission response matrices are computed.                                                       | Output `npz` file of transmission reponse matrices.  |
+| `--count_simplices` | Simplices of transmission response time bins are not computed.                                        | Output `npy` file and plot of simplex counts.        |
 | `--no_plot`         | A plot of the spiketrains and voltages is output.                                                     | No plot is output.                                   |
+
 
 ## Benchmarks
 
