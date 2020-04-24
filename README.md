@@ -27,21 +27,21 @@ Simply call:
 
 	python nest_mc2.py
 
-This will run a simulation for 100ms on the 31346-neuron mc2 Blue Brain column, with lots of strong stimuli sent to the circuit. A file `report.png` will be produced, giving a visual overview of the experiment.
+This will run a simulation for 100ms on the 31346-neuron mc2 Blue Brain column, with lots of strong stimuli sent to the circuit. A visual overview of the experiment will be produced, as a `.png` file.
 
 ### Options
 
 The following options can be given the Python call initianting the file, as `--option_name=option_value`. Default values of options are indicated below, which (along with descriptions) are in the main file.
 
-| Option              | Type    | Default                                | Description                                                                                                   |
-| ------------------- | ------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `--fibres`          | string  | `fibres.npy`                           | Filename of fibres (must be in folder "stimuli"). List of lists of GIDs. Length is number of thalamic fibers. |
-| `--stimulus`        | string  | `constant_firing.npy`                  | Filename of firing pattern of stimulus (must be in folder "stimuli"). List of tuples (index,start,stop,rate). |
-| `--time`            | integer | `100`                                  | Length, in milliseconds, of experiment.                                                                       |
-| `--outplottitle`    | string  | `Spikemeter and voltmeter reports`     | Title of the output plot.                                                                                     |
-| `--t1`              | float   | `5.0`                                  | Transmission reponse: time for source to spike                                                                |
-| `--t2`              | float   | `10.0`                                 | Transmission reponse: time for sink to spike                                                                  |
-| `--flagser`         | string  | `../flagser/flagser`                   | Local location of flagser. Only relevant if `--count_simplices` flag is called.                               |
+| Option              | Type    | Default                      | Description                                                                                                   |
+| ------------------- | ------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `--fibres`          | string  | `fibres.npy`                 | Filename of fibres (must be in folder "stimuli"). List of lists of GIDs. Length is number of thalamic fibers. |
+| `--stimulus`        | string  | `constant_firing.npy`        | Filename of firing pattern of stimulus (must be in folder "stimuli"). List of tuples (index,start,stop,rate). |
+| `--time`            | integer | `100`                        | Length, in milliseconds, of experiment.                                                                       |
+| `--outplottitle`    | string  | `Visual reports`             | Title of the output plot.                                                                                     |
+| `--t1`              | float   | `5.0`                        | Transmission reponse: time for source to spike                                                                |
+| `--t2`              | float   | `10.0`                       | Transmission reponse: time for sink to spike                                                                  |
+| `--flagser`         | string  | `../flagser/flagser`         | Local address of flagser. Only relevant if `--count_simplices` flag is called.                                |
 
 
 ### Flags
