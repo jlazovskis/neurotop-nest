@@ -3,9 +3,9 @@ Simplified Blue Brain Project reconstructions and validations
 
 ## About 
 
-This project describes a construction and execution of a biological neural network model. The model is based on the EPFL-BlueBrain <a href="https://bbp.epfl.ch/nmc-portal/downloads">neocortical microcircuit</a>, though the setup allows for different models to be used.
-
-Results of experiments run with this code are available at the <a href="https://homepages.abdn.ac.uk/neurotopology/data_portal/nest/">Neuro-Topology group website</a>.
+This project describes a construction and execution of a biological neural network model. The model is based on the EPFL-BlueBrain <a href="https://bbp.epfl.ch/nmc-portal/downloads">neocortical microcircuit</a>, though the setup allows for different models to be used. Results of experiments run with this code are available at the <a href="https://homepages.abdn.ac.uk/neurotopology/data_portal/nest/">Neuro-Topology group website</a>. This project is related to several other projects:
++ <a href="https://github.com/nest/nest-simulator">NEST simulator</a> for the simulation environment
++ <a href="https://github.com/luetge/flagser">flagser</a> for counting active simplices during the simulation
 
 The main goals are for this project to be:
 + open-source,
