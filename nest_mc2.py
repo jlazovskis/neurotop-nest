@@ -60,6 +60,7 @@ args = parser.parse_args()
 #nest.set_verbosity("M_ERROR")                                              # Uncomment this to make NEST quiet
 nest.ResetKernel()                                                          # Reset nest
 root = sys.argv[0][:-11]                                                    # Current working directory
+colorscheme = [(1.0, 0.7804, 0.1725), (0.8353, 0.0, 0.1961)]                # Color scheme for output plots
 										
 # Load circuit info
 ntnstatus('Loading mc2 structural information')
@@ -80,7 +81,7 @@ fibres_address = root+'stimuli/'+args.fibres                                # Ad
 fibres = np.load(fibres_address,allow_pickle=True)                          # Get which neurons the fibres connect to
 stimulus_address = root+'stimuli/'+args.stimulus
 firing_pattern = np.load(stimulus_address,allow_pickle=True)                # When the nerve fibres fire, each element of the form (fibre_id,start_time,end_time,firing_rate)
-stim_strength = 2000000
+stim_strength = 10000
 
 # Declare parameters
 augold2 = (1., 0.866667, 0.)                                                # Declare color scheme
@@ -131,8 +132,8 @@ for n in range(1,nnum+1):
 
 for fire in firing_pattern:
 	nest.SetStatus((stimuli[int(fire[0])],), params={
-		 'start':float(fire[1]),
-		 'stop':float(fire[2]),
+		 'start': round(float(fire[1]),1),
+		 'stop': round(float(fire[2]),1),
 		 'rate': float(fire[3])*stim_strength})
 
 # Run simulation
@@ -217,7 +218,7 @@ if not args.no_plot:
 	spikes = nest.GetStatus(spikedetector)[0]['events']
 	volts = nest.GetStatus(voltmeter)[0]['events']['V_m']
 	fig = plt.figure(figsize=(15,6)) # default is (8,6)
-	fig.suptitle(args.outplottitle,fontsize=18)
+	fig.suptitle(args.outplottitle, fontsize=18, y=.97)
 	
 	if args.count_simplices:
 		ax_spikes = fig.add_subplot(3,1,1)
@@ -230,19 +231,34 @@ if not args.no_plot:
 		ax_simp.set_ylabel('number of simplices')
 
 	else:
-		ax_spikes = fig.add_subplot(2,1,1)
-		ax_volts = fig.add_subplot(2,1,2)
+		ax_stim = fig.add_subplot(3,1,1)
+		ax_spikes = fig.add_subplot(3,1,2)
+		ax_volts = fig.add_subplot(3,1,3)
+
+	ax_stim.invert_yaxis()
+	stim_loc = []; stim_time = []; stim_power = []
+	stim_range = [min([fire[3] for fire in firing_pattern]), max([fire[3] for fire in firing_pattern])]
+	for fire in firing_pattern:
+		for pulse in range(int(10*(fire[2]-fire[1]))):
+			stim_loc.append(int(fire[0]))
+			stim_time.append(fire[1]+pulse*0.1)
+			stim_power.append((fire[3]-stim_range[0])/(stim_range[1]-stim_range[0]))
+	ax_stim.scatter(stim_time, stim_loc, s=0.5, marker="s", c=list(map(lambda x: plt.cm.autumn_r(x), stim_power)), edgecolors='none', alpha=0.8)	
+	ax_stim.set_ylabel('thalamus index')
+	ax_stim.set_xlim(0,exp_length)
 
 	ax_spikes.invert_yaxis()
-	ax_spikes.scatter(spikes['times'], spikes['senders'], s=1, marker="+")
+	ax_spikes.scatter(spikes['times'], spikes['senders'], s=0.5, marker="s", c=[colorscheme[1] for i in spikes['times']], edgecolors='none', alpha=0.8)
 	ax_spikes.set_ylabel('neuron index')
 	ax_spikes.set_ylim(1,nnum)
-	ax_spikes.set_xlim(0,exp_length-1)
+	ax_spikes.set_xlim(0,exp_length)
 	
 	v = ax_volts.imshow(np.transpose(np.array(volts).reshape(int(exp_length-1),nnum)), cmap=plt.cm.Spectral_r, interpolation='None', aspect="auto")
 	ax_volts.invert_yaxis()
 	ax_volts.set_ylabel('neuron index')
 	ax_volts.set_xlabel('time in ms')
 	
-	fig.colorbar(v, ax=ax_volts, pad=0.03, fraction=0.02, orientation='vertical', label="voltage")
+	fig.subplots_adjust(hspace=0.15, left=0.06, right=.96, bottom=0.05, top=.90)
+	fig.align_ylabels([ax_stim,ax_spikes,ax_volts])
+	fig.colorbar(v, ax=ax_volts, pad=0.02, fraction=0.01, orientation='vertical', label="voltage")
 	plt.savefig(root+'report_'+timestamp+'.png')
