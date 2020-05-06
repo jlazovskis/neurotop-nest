@@ -6,3 +6,4 @@
 2020-04-19 Flags to shuffle edges, output spike file, not use mc2 structure, not output plots
 2020-04-20 Flag and options for transmission response matrices
 2020-04-24 Added flagser extension to compute simplices
+2020-05-06 Split output functions into separate file. Added input stimulus plot.

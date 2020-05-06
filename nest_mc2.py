@@ -3,23 +3,14 @@
 # Authors: Jānis Lazovskis, Jason Smith
 # Date: March 2020
 
-# Packages: for inputs
+# Packages
 import numpy as np                                                          # For reading of files
 import pandas as pd                                                         # For reading of files
 import random                                                               # For list shuffling
 import sys                                                                  # For current directory to read and write files
 import nest                                                                 # For main simulation
 import argparse                                                             # For options
-
-# Packages: for outputs
 from datetime import datetime                                               # For giving messages
-import h5py                                                                 # For exporting h5 files
-from functools import reduce                                                # For combining simplices
-import matplotlib as mpl                                                    # For plotting
-import matplotlib.pyplot as plt                                             # For plotting
-from mpl_toolkits.axes_grid1 import make_axes_locatable                     # For plotting, to add colorbar nicely
-import scipy.sparse                                                         # For exporting transimssion response matrices
-import subprocess                                                           # For counting simplices and running flagser
 
 # Auxiliary: Formatted printer for messages
 def ntnstatus(message):
@@ -47,8 +38,8 @@ parser.add_argument('--time', type=int, default=100, help='Length, in millisecon
 
 # Arguments: outputs
 parser.add_argument('--make_spikes', action='store_true', help='If included, outputs a file "spikes.h5" containing two lists, one of the GIDs of spiking neurons, the other of times at which they spiked. This is the dictionary NEST produces with getstatus for the events of the spikedetector.')
-parser.add_argument('--make_tr', action='store_true', help='If included, outputs a file "tr.npz" containing transmission response matrices.')
-parser.add_argument('--count_simplices', action='store_true', help='If included, outputs a file "simplexcount.npy" containing simplex counts for each transmission response step.')
+parser.add_argument('--make_tr', action='store_true', help='If included, outputs a file "tr.npz" containing transmission response matrices and "simplexcount.npy" containing simplex counts for each transmission response step.')
+parser.add_argument('--plot_simplices', action='store_true', help='If included, outputs a plot simplexcount that shows the simplex count at each transimssion response step.')
 parser.add_argument('--flagser', type=str, default='../flagser/flagser', help='Location of flagser executable.')
 parser.add_argument('--t1', type=float, default=5.0, help='t1 for transmission reponse matrices')
 parser.add_argument('--t2', type=float, default=10.0, help='t2 for transmission reponse matrices')
@@ -60,8 +51,10 @@ args = parser.parse_args()
 #nest.set_verbosity("M_ERROR")                                              # Uncomment this to make NEST quiet
 nest.ResetKernel()                                                          # Reset nest
 root = sys.argv[0][:-11]                                                    # Current working directory
-colorscheme = [(1.0, 0.7804, 0.1725), (0.8353, 0.0, 0.1961)]                # Color scheme for output plots
-										
+class mc2simul:                                                             # Class for simulation
+	id = datetime.now().strftime("%s")
+	length = args.time
+
 # Load circuit info
 ntnstatus('Loading mc2 structural information')
 mc2_address = root+'structure/adjmat_mc2.npz'                               # mc2 adjacency matrix
@@ -84,7 +77,6 @@ firing_pattern = np.load(stimulus_address,allow_pickle=True)                # Wh
 stim_strength = 10000
 
 # Declare parameters
-augold2 = (1., 0.866667, 0.)                                                # Declare color scheme
 weight_factor = 10.0                                                        # Weight of synapses (used as a multiplying factor)
 delay_factor = 0.1                                                          # Delay between neurons (used as a multiplying factor)
 exp_length = args.time                                                      # Length of experiment, in milliseconds
@@ -128,8 +120,6 @@ spikedetector = nest.Create('spike_detector', params={
 for n in range(1,nnum+1):
 	nest.Connect(voltmeter,(n,))
 	nest.Connect((n,),spikedetector)
-#    nest.SetStatus((n,), {"I_e": 250.0+np.random.rand()*stim*.5})
-
 for fire in firing_pattern:
 	nest.SetStatus((stimuli[int(fire[0])],), params={
 		 'start': round(float(fire[1]),1),
@@ -140,125 +130,25 @@ for fire in firing_pattern:
 ntnstatus("Running simulation of "+str(exp_length)+"ms")
 nest.Simulate(float(exp_length))
 
-# Report: spiketrains
-timestamp = datetime.now().strftime("%s")
+# Process results
+from nest_mc2_output import *
+cur_simul = mc2simul()
+mc2simul.neurons = nnum
+mc2simul.stimulus = firing_pattern
+mc2simul.voltage = nest.GetStatus(voltmeter)[0]['events']['V_m']
+mc2simul.spikes = nest.GetStatus(spikedetector)[0]['events']
+
 if args.make_spikes:
 	ntnstatus("Creating h5 file of spikes")
-	f = h5py.File('spikes_'+timestamp+'.h5','w')
-	spikes = nest.GetStatus(spikedetector)[0]['events']
-	for k in spikes.keys():
-		f.create_dataset(k, data=spikes[k])
-	f.close()
+	make_spikes(cur_simul)
 
-# Report: transmission response matrices and simplex count
-if args.make_tr or args.count_simplices:
+if args.make_tr:
 	t1 = args.t1
 	t2 = args.t2
 	ntnstatus("Creating transmission response matrices with t1="+str(t1)+" and t2="+str(t2))
-	# Get key times
-	times = [t1*i for i in range(int(exp_length/t1)+1)]
-	# Get ordered times and indices of spikes
-	spikes = nest.GetStatus(spikedetector)[0]['events']
-	tr_times = sorted(spikes['times'])
-	tr_neurons = [x-1 for _,x in sorted(zip(spikes['times'], spikes['senders']))]
-	# Get adjacencies as dense matrix
-	adjmat = scipy.sparse.coo_matrix((adj['data'], (adj['row'],adj['col'])), shape=(nnum,nnum)).toarray()
-	matrices = []
-	simplices = []
-	for i in range(len(times)-1):
-		print('    Step '+str(i)+': ['+str(times[i])+','+str(times[i+1])+'] in ['+str(times[i])+','+str(min(times[i]+t2,exp_length))+']',flush=True)
-		M = np.zeros((nnum,nnum),dtype='int8')
-		t1_start = np.searchsorted(tr_times, times[i])
-		t1_end = np.searchsorted(tr_times, times[i+1])
-		t2_end = np.searchsorted(tr_times, times[i]+t2)
-		# Source vertex spiked in [0, t1], sink in [0,t2]
-		sources = np.unique(tr_neurons[t1_start:t1_end])
-		targets = np.unique(tr_neurons[t1_start:t2_end])
-		target_vector = scipy.sparse.coo_matrix((np.ones(len(targets),dtype='int8'), (np.zeros(len(targets),dtype='int8'), targets)), shape=(1,nnum+1)).toarray()[0][1:]
-		for source in sources:
-			M[source] = np.logical_and(adjmat[source],target_vector)
-		# Source vertex spiked in [t1,t2], sink in [t1,t2]
-		sources = np.unique(tr_neurons[t1_end:t2_end])
-		target_vector = scipy.sparse.coo_matrix((np.ones(len(sources),dtype='int8'), (np.zeros(len(sources),dtype='int8'), sources)), shape=(1,nnum+1)).toarray()[0][1:]
-		for source in sources:
-			M[source] = np.logical_and(adjmat[source],target_vector)
-		matrices.append(M)
-		if args.count_simplices:
-			f = open(root+'step'+str(i),'w')
-			f.write('dim 0\n')
-			for j in range(nnum):
-				f.write('0 ')
-			f.write('\ndim 1\n')
-			for j in range(nnum):
-				for k in np.nonzero(matrices[i][j])[0]:
-					f.write(str(j)+' '+str(k)+'\n')
-			f.close()
-			cmd = subprocess.Popen(['./'+str(args.flagser), '--out', root+'step'+str(i)+'.flag',  root+'step'+str(i)], stdout=subprocess.DEVNULL)
-			cmd.wait()
-			g = open(root+'step'+str(i)+'.flag','r')
-			L = g.readlines()
-			g.close()
-			simplices.append(np.array(list(map(lambda x: int(x), L[1][:-1].split(' ')[1:]))))
-			print('    Simplex counts > 1: '+reduce((lambda x,y: str(x)+' '+str(y)), simplices[-1]), flush=True)
-			subprocess.Popen(['rm', root+'step'+str(i)], stdout=subprocess.DEVNULL)
-			subprocess.Popen(['rm', root+'step'+str(i)+'.flag'], stdout=subprocess.DEVNULL)
-	if args.make_tr:
-		ntnstatus('Compressing '+str(len(matrices))+' dense matrices into npz file')
-		np.savez_compressed(root+'transmissionresponse_'+timestamp, *matrices)
-	if args.count_simplices:
-		maxlen = max([len(s) for s in simplices])
-		for s in range(len(simplices)):
-			while len(simplices[s]) < maxlen:
-				simplices[s] = np.concatenate((simplices[s],np.zeros(1,dtype='int64')), axis=None)
-		np.save(root+'simplices_'+timestamp, np.array(simplices))
+	cur_simul.adj = adj
+	cur_simul.simplices = make_tr(cur_simul, t1, t2, args.flagser)
 
-# Report: spike and voltage plots
 if not args.no_plot:
 	ntnstatus("Creating spike and volt plots")
-	spikes = nest.GetStatus(spikedetector)[0]['events']
-	volts = nest.GetStatus(voltmeter)[0]['events']['V_m']
-	fig = plt.figure(figsize=(15,6)) # default is (8,6)
-	fig.suptitle(args.outplottitle, fontsize=18, y=.97)
-	
-	if args.count_simplices:
-		ax_spikes = fig.add_subplot(3,1,1)
-		ax_volts = fig.add_subplot(3,1,2)
-		ax_simp = fig.add_subplot(3,1,3); plt.yscale("symlog")
-		for dim in range(len(simplices[0])-1):
-			ax_simp.plot(range(len(simplices)), [simplices[step][dim] for step in range(len(simplices))], label='dim'+str(dim+1))
-		ax_simp.legend(bbox_to_anchor=(1, .5), loc='center left', borderaxespad=0.5)
-		ax_simp.set_xticks(list(range(len(simplices))))
-		ax_simp.set_ylabel('number of simplices')
-
-	else:
-		ax_stim = fig.add_subplot(3,1,1)
-		ax_spikes = fig.add_subplot(3,1,2)
-		ax_volts = fig.add_subplot(3,1,3)
-
-	ax_stim.invert_yaxis()
-	stim_loc = []; stim_time = []; stim_power = []
-	stim_range = [min([fire[3] for fire in firing_pattern]), max([fire[3] for fire in firing_pattern])]
-	for fire in firing_pattern:
-		for pulse in range(int(10*(fire[2]-fire[1]))):
-			stim_loc.append(int(fire[0]))
-			stim_time.append(fire[1]+pulse*0.1)
-			stim_power.append((fire[3]-stim_range[0])/(stim_range[1]-stim_range[0]))
-	ax_stim.scatter(stim_time, stim_loc, s=0.5, marker="s", c=list(map(lambda x: plt.cm.autumn_r(x), stim_power)), edgecolors='none', alpha=0.8)	
-	ax_stim.set_ylabel('thalamus index')
-	ax_stim.set_xlim(0,exp_length)
-
-	ax_spikes.invert_yaxis()
-	ax_spikes.scatter(spikes['times'], spikes['senders'], s=0.5, marker="s", c=[colorscheme[1] for i in spikes['times']], edgecolors='none', alpha=0.8)
-	ax_spikes.set_ylabel('neuron index')
-	ax_spikes.set_ylim(1,nnum)
-	ax_spikes.set_xlim(0,exp_length)
-	
-	v = ax_volts.imshow(np.transpose(np.array(volts).reshape(int(exp_length-1),nnum)), cmap=plt.cm.Spectral_r, interpolation='None', aspect="auto")
-	ax_volts.invert_yaxis()
-	ax_volts.set_ylabel('neuron index')
-	ax_volts.set_xlabel('time in ms')
-	
-	fig.subplots_adjust(hspace=0.15, left=0.06, right=.96, bottom=0.05, top=.90)
-	fig.align_ylabels([ax_stim,ax_spikes,ax_volts])
-	fig.colorbar(v, ax=ax_volts, pad=0.02, fraction=0.01, orientation='vertical', label="voltage")
-	plt.savefig(root+'report_'+timestamp+'.png')
+	make_plot(cur_simul, args.outplottitle, args.plot_simplices)

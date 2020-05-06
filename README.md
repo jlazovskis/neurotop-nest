@@ -48,14 +48,14 @@ The following options can be given the Python call initianting the file, as `--o
 
 The following flags can be given the Python call initianting the file, as `--flag_name`. Default behavior when flags are not called is indicated below.
 
-| Flag                | If not called (default)                                                                               | If called                                            |
-| ------------------- | ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| `--no_mc2approx`    | Approximate structure (distances between neurons, weights / delays / failures of synapses) is used.   | Nothing beyond mc2 neuron connections is used.       |
-| `--shuffle`         | Adjacency matrix is used as given.                                                                    | Rows and columns of adjacency matrix are shuffled.   |
-| `--make_spikes`     | No spike trains are computed.                                                                         | Output `h5` file of the spiketrains.                 |
-| `--make_tr`         | No transmission response matrices are computed.                                                       | Output `npz` file of transmission reponse matrices.  |
-| `--count_simplices` | Simplices of transmission response time bins are not computed.                                        | Output `npy` file and plot of simplex counts.        |
-| `--no_plot`         | A plot of the spiketrains and voltages is output.                                                     | No plot is output.                                   |
+| Flag              | If not called (default)                                                                             | If called                                                                           |
+| ----------------- | ----------------------------------------------------------------------------------------------------| ----------------------------------------------------------------------------------- |
+| `--no_mc2approx`  | Approximate structure (distances between neurons, weights / delays / failures of synapses) is used. | Nothing beyond mc2 neuron connections is used.                                      |
+| `--shuffle`       | Adjacency matrix is used as given.                                                                  | Rows and columns of adjacency matrix are shuffled.                                  |
+| `--make_spikes`   | No spike trains are computed.                                                                       | Output `h5` file of the spiketrains.                                                |
+| `--make_tr`       | No transmission response matrices or simplex counts are computed.                                   | Output `npz` file of transmission reponse matrices and `npy` file of simplex counts.|
+| `--plot_simplices`| Simplices of transmission response time bins are not plotted.                                       | Output plot of simplex counts. Flag `--no_plot` overrides this.                     |
+| `--no_plot`       | A plot of the spiketrains and voltages is output.                                                   | No plot is output.                                                                  |
 
 
 ## Benchmarks
