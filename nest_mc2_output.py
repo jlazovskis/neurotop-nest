@@ -63,6 +63,21 @@ def make_plot(simulation, title, plot_simplices):
 		plt.xticks(list(range(len(simulation.simplices))))
 		plt.ylabel('number of simplices')
 		plt.savefig('simplexcount_'+simulation.id+'.png')
+
+# Output voltage only plot
+def make_volt_plot(simulation):
+	# Set up 
+	fig = plt.figure(figsize=(15,6))
+	colorscheme = {'stimulus': plt.cm.autumn_r, 'voltage': plt.cm.Spectral_r, 'spike': (0.8353, 0.0, 0.1961)}
+
+	# Draw axis: voltage
+	plt.imshow(np.transpose(np.array(simulation.voltage).reshape(int(simulation.length-1),simulation.neurons)), cmap=colorscheme['voltage'], interpolation='None', aspect="auto")
+	plt.gca().invert_yaxis()
+	plt.ylabel('neuron index')
+	plt.xlabel('time in ms')
+	plt.colorbar(fraction=.1, pad=.01, orientation='vertical', label="voltage")
+	plt.tight_layout()
+	plt.savefig('voltage_'+simulation.id+'.png', dpi=200)
 	
 
 # Transimssion response matrices and simplex count

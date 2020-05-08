@@ -45,6 +45,7 @@ parser.add_argument('--t1', type=float, default=5.0, help='t1 for transmission r
 parser.add_argument('--t2', type=float, default=10.0, help='t2 for transmission reponse matrices')
 parser.add_argument('--no_plot', action='store_true', help='If not included, outputs visual plot of spikes and voltages of experiment.')
 parser.add_argument('--outplottitle', type=str, default='Visual reports', help='Title for plot produced at the end. ')
+parser.add_argument('--volt_plot', action='store_true', help='If included, output is only voltage plot.')
 args = parser.parse_args()
 
 # Set up
@@ -57,17 +58,15 @@ class mc2simul:                                                             # Cl
 
 # Load circuit info
 ntnstatus('Loading mc2 structural information')
-mc2_address = root+'structure/adjmat_mc2.npz'                               # mc2 adjacency matrix
-adj = np.load(mc2_address)
-mc2_edges = list(zip(adj['row'], adj['col']))                               # mc2 edges between neurons
 nnum = 31346                                                                # Number of neurons in circuit
-if not args.no_mc2approx:
-	distance_address = root+'structure/distances_mc2.npz'                   # mc2 physical distances between neurons
-	mc2_delays = np.load(distance_address)['data']                          # Interpret distances as delays
-	mc2_layers = np.load(root+'structure/layersize_mc2.npy')                # Size of mc2 layers (for interpreting structural information)
-	mc2_layers_summed = [sum(mc2_layers[:i]) for i in range(55)]            # Summed layer sizes for easier access
-	mc2_weights = pd.read_pickle(root+'structure/synapses_mc2.pkl')         # Average number of synapses between layers
-	mc2_transmits = pd.read_pickle(root+'structure/failures_mc2.pkl')       # Average number of failures between layers
+adj = np.load(root+'structure/adjmat_mc2.npz')                              # Adjacency matrix
+mc2_edges = list(zip(adj['row'], adj['col']))                               # mc2 edges between neurons
+mc2_excitatory = np.load(root+'structure/isneuronexcitatory_mc2.npy')       # Binary list indicating if neuron is excitatory or not
+mc2_delays = np.load(root+'structure/distances_mc2.npz')['data']            # Interpret distances as delays
+mc2_layers = np.load(root+'structure/layersize_mc2.npy')                    # Size of mc2 layers (for interpreting structural information)
+mc2_layers_summed = [sum(mc2_layers[:i]) for i in range(55)]                # Summed layer sizes for easier access
+mc2_weights = pd.read_pickle(root+'structure/synapses_mc2.pkl')             # Average number of synapses between layers
+mc2_transmits = pd.read_pickle(root+'structure/failures_mc2.pkl')           # Average number of failures between layers
 
 # Load stimulus info
 fibres_address = root+'stimuli/'+args.fibres                                # Address of thalamic nerve fibres data
@@ -77,7 +76,7 @@ firing_pattern = np.load(stimulus_address,allow_pickle=True)                # Wh
 stim_strength = 10000
 
 # Declare parameters
-weight_factor = 10.0                                                        # Weight of synapses (used as a multiplying factor)
+weight_factor = 1.0                                                         # Weight of synapses (used as a multiplying factor)
 delay_factor = 0.1                                                          # Delay between neurons (used as a multiplying factor)
 exp_length = args.time                                                      # Length of experiment, in milliseconds
 max_fail = 100                                                              # Number of failures to consider as no transmission for a synapse
@@ -93,13 +92,13 @@ network = nest.Create('iaf_cond_exp_sfa_rr', n=nnum, params=None)
 for i in range(len(mc2_edges[0])):
 	if not args.no_mc2approx:  
 		layerpair = getlayers(mc2_edges[0][i],mc2_edges[1][i])
-		nest.Connect((mc2_edges[0][i]+1,),(mc2_edges[1][i]+1,), syn_spec={
-			'weight' : (0 if np.isnan(mc2_weights.iloc[layerpair]) else mc2_weights.iloc[layerpair])*weight_factor,
-			'delay' : mc2_delays[i]*delay_factor,
+		nest.Connect((mc2_edges[0][i]+1,), (mc2_edges[1][i]+1,), syn_spec={
 			'model' : 'bernoulli_synapse',
+			'weight' : (0 if np.isnan(mc2_weights.iloc[layerpair]) else mc2_weights.iloc[layerpair])*weight_factor*(-1)**(not mc2_excitatory[mc2_edges[0][i]]),
+			'delay' : mc2_delays[i]*delay_factor,
 			'p_transmit' : 1-(max_fail if np.isnan(mc2_transmits.iloc[layerpair]) else mc2_transmits.iloc[layerpair])/max_fail})
 	else:
-		nest.Connect((mc2_edges[0][i]+1,),(mc2_edges[1][i]+1,), syn_spec={'weight': np.random.random()*weight_factor, 'delay': delay_factor})
+		nest.Connect((mc2_edges[0][i]+1,), (mc2_edges[1][i]+1,), syn_spec={'weight': np.random.random()*weight_factor, 'delay': delay_factor})
 
 # Define stimulus and connect it to neurons
 ntnstatus('Creating thalamic nerves for stimulus')
@@ -107,9 +106,14 @@ stimuli = nest.Create('poisson_generator', n=len(fibres))
 for stimulus in range(len(fibres)):
 	for j in fibres[stimulus]:
 		nest.Connect((stimuli[stimulus],),(j+1,))
+for fire in firing_pattern:
+	nest.SetStatus((stimuli[int(fire[0])],), params={
+		 'start': round(float(fire[1]),1),
+		 'stop': round(float(fire[2]),1),
+		 'rate': float(fire[3])*stim_strength})
 
-# Record voltage and spikes
-ntnstatus("Connecting thalamic nerves to circuit")
+# Connect voltage and spike readers
+ntnstatus('Adding voltage and spike readers')
 voltmeter = nest.Create('voltmeter', params={
 	 'label': 'volts',
 	 'withtime': True,
@@ -120,11 +124,13 @@ spikedetector = nest.Create('spike_detector', params={
 for n in range(1,nnum+1):
 	nest.Connect(voltmeter,(n,))
 	nest.Connect((n,),spikedetector)
-for fire in firing_pattern:
-	nest.SetStatus((stimuli[int(fire[0])],), params={
-		 'start': round(float(fire[1]),1),
-		 'stop': round(float(fire[2]),1),
-		 'rate': float(fire[3])*stim_strength})
+
+# Add ambient noise
+ntnstatus('Creating ambient noise for circuit')
+noisers = nest.Create('noise_generator', n=nnum)
+for i in range(nnum):
+	nest.SetStatus((noisers[i],), params={'mean': 150+np.random.rand()*50, 'std':np.random.rand()*20, 'dt':0.1*np.random.randint(1,10), 'phase':np.random.rand()*360, 'frequency':np.random.rand()*1000000})
+	nest.Connect((noisers[i],), (i+1,))
 
 # Run simulation
 ntnstatus("Running simulation of "+str(exp_length)+"ms")
@@ -133,10 +139,10 @@ nest.Simulate(float(exp_length))
 # Process results
 from nest_mc2_output import *
 cur_simul = mc2simul()
-mc2simul.neurons = nnum
-mc2simul.stimulus = firing_pattern
-mc2simul.voltage = nest.GetStatus(voltmeter)[0]['events']['V_m']
-mc2simul.spikes = nest.GetStatus(spikedetector)[0]['events']
+cur_simul.neurons = nnum
+cur_simul.stimulus = firing_pattern
+cur_simul.voltage = nest.GetStatus(voltmeter)[0]['events']['V_m']
+cur_simul.spikes = nest.GetStatus(spikedetector)[0]['events']
 
 if args.make_spikes:
 	ntnstatus("Creating h5 file of spikes")
@@ -150,5 +156,9 @@ if args.make_tr:
 	cur_simul.simplices = make_tr(cur_simul, t1, t2, args.flagser)
 
 if not args.no_plot:
-	ntnstatus("Creating spike and volt plots")
-	make_plot(cur_simul, args.outplottitle, args.plot_simplices)
+	if args.volt_plot:
+		ntnstatus("Creating voltage plot")
+		make_volt_plot(cur_simul)
+	else:
+		ntnstatus("Creating spike and volt plots")
+		make_plot(cur_simul, args.outplottitle, args.plot_simplices)
