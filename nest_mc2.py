@@ -6,6 +6,7 @@
 # Packages
 import numpy as np                                                          # For reading of files
 import pandas as pd                                                         # For reading of files
+from scipy.sparse import load_npz                                           # For reading of files
 import random                                                               # For list shuffling
 import sys                                                                  # For current directory to read and write files
 import nest                                                                 # For main simulation
@@ -51,6 +52,7 @@ args = parser.parse_args()
 # Set up
 #nest.set_verbosity("M_ERROR")                                              # Uncomment this to make NEST quiet
 nest.ResetKernel()                                                          # Reset nest
+nest.SetKernelStatus({"local_num_threads": 8})                              # Run on many threads
 root = sys.argv[0][:-11]                                                    # Current working directory
 class mc2simul:                                                             # Class for simulation
 	id = datetime.now().strftime("%s")
@@ -59,9 +61,8 @@ class mc2simul:                                                             # Cl
 # Load circuit info
 ntnstatus('Loading mc2 structural information')
 nnum = 31346                                                                # Number of neurons in circuit
-adj = np.load(root+'structure/adjmat_mc2.npz')                              # Adjacency matrix
-mc2_edges = list(zip(adj['row'], adj['col']))                               # mc2 edges between neurons
-mc2_excitatory = np.load(root+'structure/isneuronexcitatory_mc2.npy')       # Binary list indicating if neuron is excitatory or not
+adj = load_npz(root+'structure/adjmat_mc2.npz').toarray()                   # Adjacency matrix
+exc = np.load(root+'structure/isneuronexcitatory_mc2.npy')                  # Binary list indicating if neuron is excitatory or not
 mc2_delays = np.load(root+'structure/distances_mc2.npz')['data']            # Interpret distances as delays
 mc2_layers = np.load(root+'structure/layersize_mc2.npy')                    # Size of mc2 layers (for interpreting structural information)
 mc2_layers_summed = [sum(mc2_layers[:i]) for i in range(55)]                # Summed layer sizes for easier access
@@ -76,8 +77,9 @@ firing_pattern = np.load(stimulus_address,allow_pickle=True)                # Wh
 stim_strength = 10000
 
 # Declare parameters
-weight_factor = 1.0                                                         # Weight of synapses (used as a multiplying factor)
-delay_factor = 0.1                                                          # Delay between neurons (used as a multiplying factor)
+syn_weight = 1.0                                                            # Weight of excitatory synapses
+inh_fac = -0.5                                                              # Multiplier weight of inhibitory synapses
+delay = 0.1                                                                 # Delay between neurons (used as a multiplying factor)
 exp_length = args.time                                                      # Length of experiment, in milliseconds
 max_fail = 100                                                              # Number of failures to consider as no transmission for a synapse
 
@@ -88,17 +90,24 @@ if args.shuffle:
 
 # Create the circuit
 ntnstatus('Constructing circuit')
-network = nest.Create('iaf_cond_exp_sfa_rr', n=nnum, params=None)
-for i in range(len(mc2_edges[0])):
-	if not args.no_mc2approx:  
-		layerpair = getlayers(mc2_edges[0][i],mc2_edges[1][i])
-		nest.Connect((mc2_edges[0][i]+1,), (mc2_edges[1][i]+1,), syn_spec={
-			'model' : 'bernoulli_synapse',
-			'weight' : (0 if np.isnan(mc2_weights.iloc[layerpair]) else mc2_weights.iloc[layerpair])*weight_factor*(-1)**(not mc2_excitatory[mc2_edges[0][i]]),
-			'delay' : mc2_delays[i]*delay_factor,
-			'p_transmit' : 1-(max_fail if np.isnan(mc2_transmits.iloc[layerpair]) else mc2_transmits.iloc[layerpair])/max_fail})
-	else:
-		nest.Connect((mc2_edges[0][i]+1,), (mc2_edges[1][i]+1,), syn_spec={'weight': np.random.random()*weight_factor, 'delay': delay_factor})
+network = nest.Create('izhikevich', n=nnum, params={'a':0.2})
+#network = nest.Create('iaf_cond_exp_sfa_rr', n=nnum, params=None)
+targets = {n:np.nonzero(adj[n])[0] for n in range(nnum)}
+for source in targets.keys():
+	nest.Connect((source+1,), [target+1 for target in targets[source]], conn_spec='all_to_all', syn_spec={
+		'model':'bernoulli_synapse',
+		'weight':syn_weight if exc[source] else inh_fac*syn_weight,
+		'delay':delay,
+		'p_transmit':.1})
+#	if not args.no_mc2approx:  
+#		layerpair = getlayers(mc2_edges[0][i],mc2_edges[1][i])
+#		nest.Connect((mc2_edges[0][i]+1,), (mc2_edges[1][i]+1,), syn_spec={
+#			'model' : 'bernoulli_synapse',
+#			'weight' : (0 if np.isnan(mc2_weights.iloc[layerpair]) else mc2_weights.iloc[layerpair])*weight_factor*(-1)**(not mc2_excitatory[mc2_edges[0][i]]),
+#			'delay' : mc2_delays[i]*delay_factor,
+#			'p_transmit' : 1-(max_fail if np.isnan(mc2_transmits.iloc[layerpair]) else mc2_transmits.iloc[layerpair])/max_fail})
+#	else:
+#		nest.Connect((mc2_edges[0][i]+1,), (mc2_edges[1][i]+1,), syn_spec={'weight': np.random.random()*weight_factor, 'delay': delay_factor})
 
 # Define stimulus and connect it to neurons
 ntnstatus('Creating thalamic nerves for stimulus')
@@ -117,7 +126,8 @@ ntnstatus('Adding voltage and spike readers')
 voltmeter = nest.Create('voltmeter', params={
 	 'label': 'volts',
 	 'withtime': True,
-	 'withgid': True})
+	 'withgid': True,
+	 'interval': 0.1})
 spikedetector = nest.Create('spike_detector', params={
 	'label': 'spikes',
 	'withgid': True})
@@ -126,11 +136,11 @@ for n in range(1,nnum+1):
 	nest.Connect((n,),spikedetector)
 
 # Add ambient noise
-ntnstatus('Creating ambient noise for circuit')
-noisers = nest.Create('noise_generator', n=nnum)
-for i in range(nnum):
-	nest.SetStatus((noisers[i],), params={'mean': 150+np.random.rand()*50, 'std':np.random.rand()*20, 'dt':0.1*np.random.randint(1,10), 'phase':np.random.rand()*360, 'frequency':np.random.rand()*1000000})
-	nest.Connect((noisers[i],), (i+1,))
+#ntnstatus('Creating ambient noise for circuit')
+#noisers = nest.Create('noise_generator', n=nnum)
+#for i in range(nnum):
+#	nest.SetStatus((noisers[i],), params={'mean': 150+np.random.rand()*50, 'std':np.random.rand()*20, 'dt':0.1*np.random.randint(1,10), 'phase':np.random.rand()*360, 'frequency':np.random.rand()*1000000})
+#	nest.Connect((noisers[i],), (i+1,))
 
 # Run simulation
 ntnstatus("Running simulation of "+str(exp_length)+"ms")
