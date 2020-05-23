@@ -41,7 +41,7 @@ def make_plot(simulation, title, plot_simplices):
 	ax_spikes.set_xlim(0,simulation.length)
 
 	# Draw axis: voltage
-	v = ax_volts.imshow(np.transpose(np.array(simulation.voltage).reshape(int(simulation.length-1),simulation.neurons)), cmap=colorscheme['voltage'], interpolation='None', aspect="auto")
+	v = ax_volts.imshow(np.transpose(np.array(simulation.voltage).reshape(int(simulation.length*10-1),simulation.neurons)), cmap=colorscheme['voltage'], interpolation='None', aspect="auto")
 	ax_volts.invert_yaxis()
 	ax_volts.set_ylabel('neuron index')
 	ax_volts.set_xlabel('time in ms')
