@@ -1,6 +1,7 @@
 # Packages
 import h5py                                                                 # For exporting h5 files
 import numpy as np                                                          # For reading of files
+import pandas as pd                                                         # For reading of files
 from functools import reduce                                                # For combining simplices
 import matplotlib as mpl                                                    # For plotting
 import matplotlib.pyplot as plt                                             # For plotting
@@ -46,7 +47,7 @@ def make_plot(simulation, title, plot_simplices):
 	ax_volts.set_ylabel('neuron index')
 	ax_volts.set_xlabel('time in ms')
 
-	# Export figure	
+	# Export figure	outlook
 	fig.subplots_adjust(hspace=0.15, left=0.06, right=.96, bottom=0.05, top=.90)
 	fig.align_ylabels([ax_stim,ax_spikes,ax_volts])
 	fig.colorbar(v, ax=ax_volts, pad=0.02, fraction=0.01, orientation='vertical', label="voltage")
@@ -78,7 +79,25 @@ def make_volt_plot(simulation):
 	plt.colorbar(fraction=.1, pad=.01, orientation='vertical', label="voltage")
 	plt.tight_layout()
 	plt.savefig('voltage_'+simulation.id+'.png', dpi=200)
-	
+
+# Output spike only plot
+def make_spike_plot(name,length):
+	s = np.load(name+'.npy',allow_pickle=True)[True][0]
+	fig = plt.figure(figsize=(20,6))
+	plt.gca().invert_yaxis()
+	plt.scatter(s['times'], s['senders'], s=1, marker="s", c=[(0.8353, 0.0, 0.1961) for i in range(len(s['times']))], edgecolors='none', alpha=.8)
+#	plt.set_ylabel('neuron index')
+#	ax_spikes.set_ylim(1,simulation.neurons)
+#	ax_spikes.set_xlim(0,simulation.length)
+	plt.xlim(0,length)
+	plt.tight_layout()
+	plt.savefig(name+'.png', dpi=200)
+
+# Transimssion response matrices from spike file
+def make_tr_fromspikes(name, t1, t2, flagser='/home/jlv/flagser/flagser'):
+	s = np.load(name+'.npy',allow_pickle=True)[True][0]
+	return 1
+
 
 # Transimssion response matrices and simplex count
 def make_tr(simulation, t1, t2, flagser):
@@ -153,3 +172,40 @@ def make_spikes(simulation):
 	for k in spikes.keys():
 		f.create_dataset(k, data=spikes[k])
 	f.close()
+
+# Make visual plot of locations of neurons spiking
+def make_loc_plot(volt_file,number_of_steps):
+	# Load data
+	data = np.transpose(np.load(volt_file).reshape(int(number_of_steps-1),31346))
+	locs = pd.read_pickle('/home/jlv/Documents/Darbi - algoti/2019-08 University of Aberdeen/Projects/2020-03-10 New distances/2020-05-02-active-neurons/mc2_locs.pkl')
+	ranges = {'x':[min(locs.iloc[0]),max(locs.iloc[0])], 'y':[min(locs.iloc[1]),max(locs.iloc[1])], 'z':[min(locs.iloc[2]), max(locs.iloc[2])]}
+
+	# Set up figure
+	fig = plt.figure(figsize=(20,10)) # default is (8,6)
+	siz = 10
+	transp = .01
+	for s in ['axes.spines.left','axes.spines.right','axes.spines.top','axes.spines.bottom']:
+		mpl.rcParams[s] = False
+	yz = fig.add_subplot(1,3,1); xz = fig.add_subplot(1,3,2); xy = fig.add_subplot(1,3,3)
+
+	# Plot figure
+#	for t in range(number_of_steps):
+	t = 600
+	voltrange_raw = max([data[n][t] for n in range(31346)]) - min([data[n][t] for n in range(31346)])
+	voltrange = 0 if voltrange_raw < 0.0001 else voltrange_raw
+	for projh,projv,ax in zip(['y','x','x'],['z','z','y'],[yz,xz,xy]):
+		print('Plotting plane '+projh+projv,flush=True)
+		horizontal = []; vertical = []; shade = [];
+		for n in range(31346):
+			horizontal.append(locs[n][projh]); vertical.append(locs[n][projv]); shade.append(data[n][t]/voltrange if voltrange else 0);
+		ax.scatter(horizontal, vertical, marker='o', s=siz, c=[shade[n] for n in range(31346)], edgecolors='none')
+#		ax.scatter(horizontal, vertical, marker='o', s=siz, c=[(shade[n],shade[n],shade[n],transp) for n in range(31346)], edgecolors='none')
+		ax.set_xlim(ranges[projh]); ax.set_ylim(ranges[projv])
+		ax.set_xlabel(projh+projv+'-axis',fontsize=8, color=(.5,.5,.5)); ax.set_xticks([]); ax.set_yticks([])
+#		plt.text(1,0, 'Stimulus '+str(stim), fontsize=12, ha='center', va='top', transform=axA.transAxes)	
+	plt.savefig('viz_{:04d}.png'.format(t),dpi=120)
+
+
+
+
+

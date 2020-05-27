@@ -74,7 +74,7 @@ fibres_address = root+'stimuli/'+args.fibres                                # Ad
 fibres = np.load(fibres_address,allow_pickle=True)                          # Get which neurons the fibres connect to
 stimulus_address = root+'stimuli/'+args.stimulus
 firing_pattern = np.load(stimulus_address,allow_pickle=True)                # When the nerve fibres fire, each element of the form (fibre_id,start_time,end_time,firing_rate)
-stim_strength = 10000
+stim_strength = 300
 
 # Declare parameters
 syn_weight = 1.0                                                            # Weight of excitatory synapses
@@ -90,7 +90,7 @@ if args.shuffle:
 
 # Create the circuit
 ntnstatus('Constructing circuit')
-network = nest.Create('izhikevich', n=nnum, params={'a':0.2})
+network = nest.Create('izhikevich', n=nnum, params={'a':1.0})
 #network = nest.Create('iaf_cond_exp_sfa_rr', n=nnum, params=None)
 targets = {n:np.nonzero(adj[n])[0] for n in range(nnum)}
 for source in targets.keys():
@@ -98,7 +98,7 @@ for source in targets.keys():
 		'model':'bernoulli_synapse',
 		'weight':syn_weight if exc[source] else inh_fac*syn_weight,
 		'delay':delay,
-		'p_transmit':.1})
+		'p_transmit':0.1})
 #	if not args.no_mc2approx:  
 #		layerpair = getlayers(mc2_edges[0][i],mc2_edges[1][i])
 #		nest.Connect((mc2_edges[0][i]+1,), (mc2_edges[1][i]+1,), syn_spec={
@@ -136,15 +136,35 @@ for n in range(1,nnum+1):
 	nest.Connect((n,),spikedetector)
 
 # Add ambient noise
-#ntnstatus('Creating ambient noise for circuit')
-#noisers = nest.Create('noise_generator', n=nnum)
-#for i in range(nnum):
-#	nest.SetStatus((noisers[i],), params={'mean': 150+np.random.rand()*50, 'std':np.random.rand()*20, 'dt':0.1*np.random.randint(1,10), 'phase':np.random.rand()*360, 'frequency':np.random.rand()*1000000})
-#	nest.Connect((noisers[i],), (i+1,))
+ntnstatus('Creating ambient noise for circuit')
+weak_noise = nest.Create('noise_generator', params={'mean':1.5, 'std':0.5})
+nest.Connect(weak_noise, list(range(1,31347)), conn_spec='all_to_all')
+strong_num = 1500
+strong_perc = 0.01
+strong_times = np.random.choice([i/10 for i in range(2,exp_length*10)], size=strong_num)
+for i in range(strong_num):
+	strong_targets = list(np.random.choice(range(1,31347),size=int(nnum*strong_perc),replace=False))
+	strong_noise = nest.Create('noise_generator', params={'mean':30.0, 'std':0.5, 'start':strong_times[i]-.1, 'stop':strong_times[i]+.1})
+	nest.Connect(strong_noise, strong_targets, conn_spec='all_to_all')
+
+# # Add spontaneous spikes
+# ntnstatus('Creating spontaneous spikes for circuit')
+# spontaneous_times = np.random.choice([i/10 for i in range(1,exp_length*10)], size=500)
+# spontaneous_times.sort()
+# spontaneous_generator = nest.Create('spike_generator', params={'spike_times':spontaneous_times})
+# spontaneous_spreader = nest.Create('spike_dilutor', params={'p_copy':1/nnum})
+# nest.Connect(spontaneous_generator,spontaneous_spreader)
+# nest.Connect(spontaneous_generator,list(range(1,31347)), conn_spec='all_to_all')
 
 # Run simulation
 ntnstatus("Running simulation of "+str(exp_length)+"ms")
 nest.Simulate(float(exp_length))
+#v = nest.GetStatus(voltmeter)[0]['events']['V_m']
+s = nest.GetStatus(spikedetector)[0]['events']
+
+#np.save(root+'n15_volts_a10_n15-05_s1000_LLspon.npy', np.array(v))
+np.save(root+'n15_10perc_a10_n15-05_s300_strong1500-300.npy', np.array(s))
+exit()
 
 # Process results
 from nest_mc2_output import *
