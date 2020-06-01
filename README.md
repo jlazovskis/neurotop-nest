@@ -23,41 +23,42 @@ Next, clone this project. You only need the `nest_mc2.py` file for everything to
 
 ## Running an experiment
 
-Simply call:
+Call the following command:
 
 	python nest_mc2.py
 
-This will run a simulation for 100ms on the 31346-neuron mc2 Blue Brain column, with lots of strong stimuli sent to the circuit. A visual overview of the experiment will be produced, as a `.png` file.
+This will run a simulation for 100ms on the 31346-neuron mc2 Blue Brain column, with lots of strong stimuli sent to the circuit. A spike file `spikes.npy` will be output. To make a visual overview of the experiment, call:
+
+	python
+	exec(open('next_mc2_output.py').read())
+	make_spike_plot('spikes',100)
+
+Other functions to make outputs are in the file `nest_mc2_outputs.py`.
+
 
 ### Options
 
 The following options can be given the Python call initianting the file, as `--option_name=option_value`. Default values of options are indicated below, which (along with descriptions) are in the main file.
 
-| Option              | Type    | Default                      | Description                                                                                                   |
-| ------------------- | ------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `--fibres`          | string  | `fibres.npy`                 | Filename of fibres (must be in folder "stimuli"). List of lists of GIDs. Length is number of thalamic fibers. |
-| `--stimulus`        | string  | `constant_firing.npy`        | Filename of firing pattern of stimulus (must be in folder "stimuli"). List of tuples (index,start,stop,rate). |
-| `--time`            | integer | `100`                        | Length, in milliseconds, of experiment.                                                                       |
-| `--outplottitle`    | string  | `Visual reports`             | Title of the output plot.                                                                                     |
-| `--t1`              | float   | `5.0`                        | Transmission reponse: time for source to spike                                                                |
-| `--t2`              | float   | `10.0`                       | Transmission reponse: time for sink to spike                                                                  |
-| `--flagser`         | string  | `../flagser/flagser`         | Local address of flagser. Only relevant if `--count_simplices` flag is called.                                |
+| Option              | Type    | Default             | Description                                                                                                   |
+| ------------------- | ------- | --------------------| ------------------------------------------------------------------------------------------------------------- |
+| `--fibres`          | string  | `fibres.npy`        | Filename of fibres (must be in folder "stimuli"). List of lists of GIDs. Length is number of thalamic fibers. |
+| `--stimulus`        | string  | `constant`          | Firing pattern of stimulus (must be in folder "stimuli"), must be one of "n5","n15","n30","constant".         |
+| `--time`            | integer | `100`               | Length, in milliseconds, of experiment.                                                                       |
 
 
 ### Flags
 
 The following flags can be given the Python call initianting the file, as `--flag_name`. Default behavior when flags are not called is indicated below.
 
-| Flag              | If not called (default)                                                                             | If called                                                                           |
-| ----------------- | ----------------------------------------------------------------------------------------------------| ----------------------------------------------------------------------------------- |
-| `--no_mc2approx`  | Approximate structure (distances between neurons, weights / delays / failures of synapses) is used. | Nothing beyond mc2 neuron connections is used.                                      |
-| `--shuffle`       | Adjacency matrix is used as given.                                                                  | Rows and columns of adjacency matrix are shuffled.                                  |
-| `--make_spikes`   | No spike trains are computed.                                                                       | Output `h5` file of the spiketrains.                                                |
-| `--make_tr`       | No transmission response matrices or simplex counts are computed.                                   | Output `npz` file of transmission reponse matrices and `npy` file of simplex counts.|
-| `--plot_simplices`| Simplices of transmission response time bins are not plotted.                                       | Output plot of simplex counts. Flag `--no_plot` overrides this.                     |
-| `--no_plot`       | A plot of the spiketrains and voltages is output.                                                   | No plot is output.                                                                  |
+| Flag              | If not called (default)                                                                             | If called                                            |
+| ----------------- | --------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| `--no_mc2approx`  | Approximate structure (distances between neurons, weights / delays / failures of synapses) is used. | Nothing beyond mc2 neuron connections is used.       |
+| `--shuffle`       | Adjacency matrix is used as given.                                                                  | Rows and columns of adjacency matrix are shuffled.   |
 
 
 ## Benchmarks
 
-todo
+ToDo.
+
+Takes about 2 minutes to run a 250 ms simulation. The line `nest.SetKernelStatus({"local_num_threads": 8})` indicates that the computer being used has 8 threads. This can (should) be adjusted for your own system.

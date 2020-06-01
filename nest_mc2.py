@@ -26,27 +26,12 @@ def getlayers(source,target):
 # Read arguments
 parser = argparse.ArgumentParser(
 	description='Simplified Blue Brain Project reconstructions and validations',
-	usage='python nest_mc2.py [--fibres=fibres.npy] [--stimulus=stim.npy] [--time=100] [--title="Plot title"]')
-
-# Arguments: structure
+	usage='python nest_mc2.py [--fibres=fibres.npy] [--stimulus=stim.npy] [--time=100]')
+parser.add_argument('--stimulus', type=str, default='constant', help='Firing pattern to use. One of "n5", "n15", "n30", "constant". File is a list of tuples (index,start,stop,rate). Index has to be within range of length of fibres option.')
+parser.add_argument('--fibres', type=str, default='fibres.npy', help='Filename of fibres in folder "stimuli". List of lists of GIDs. Length is number of thalamic fibers.')
+parser.add_argument('--time', type=int, default=100, help='Length, in milliseconds, of experiment. Must be an integer. Default is 100.')
 parser.add_argument('--no_mc2approx', action='store_true', help='If not included, uses mc2 data for a better approximation.')
 parser.add_argument('--shuffle', action='store_true', help='If included, randomly shuffles the mc2 adjacency matrix.')
-
-# Arguments: stimulus
-parser.add_argument('--fibres', type=str, default='fibres.npy', help='Filename of fibres in folder "stimuli". List of lists of GIDs. Length is number of thalamic fibers.')
-parser.add_argument('--stimulus', type=str, default='constant_firing.npy', help='Filename of firing pattern of stimulus in folder "stimuli". List of tuples (index,start,stop,rate). Index has to be within range of length of fibres option.')
-parser.add_argument('--time', type=int, default=100, help='Length, in milliseconds, of experiment. Must be an integer. Default is 100.')
-
-# Arguments: outputs
-parser.add_argument('--make_spikes', action='store_true', help='If included, outputs a file "spikes.h5" containing two lists, one of the GIDs of spiking neurons, the other of times at which they spiked. This is the dictionary NEST produces with getstatus for the events of the spikedetector.')
-parser.add_argument('--make_tr', action='store_true', help='If included, outputs a file "tr.npz" containing transmission response matrices and "simplexcount.npy" containing simplex counts for each transmission response step.')
-parser.add_argument('--plot_simplices', action='store_true', help='If included, outputs a plot simplexcount that shows the simplex count at each transimssion response step.')
-parser.add_argument('--flagser', type=str, default='../flagser/flagser', help='Location of flagser executable.')
-parser.add_argument('--t1', type=float, default=5.0, help='t1 for transmission reponse matrices')
-parser.add_argument('--t2', type=float, default=10.0, help='t2 for transmission reponse matrices')
-parser.add_argument('--no_plot', action='store_true', help='If not included, outputs visual plot of spikes and voltages of experiment.')
-parser.add_argument('--outplottitle', type=str, default='Visual reports', help='Title for plot produced at the end. ')
-parser.add_argument('--volt_plot', action='store_true', help='If included, output is only voltage plot.')
 args = parser.parse_args()
 
 # Set up
@@ -72,8 +57,12 @@ mc2_transmits = pd.read_pickle(root+'structure/failures_mc2.pkl')           # Av
 # Load stimulus info
 fibres_address = root+'stimuli/'+args.fibres                                # Address of thalamic nerve fibres data
 fibres = np.load(fibres_address,allow_pickle=True)                          # Get which neurons the fibres connect to
-stimulus_address = root+'stimuli/'+args.stimulus
-firing_pattern = np.load(stimulus_address,allow_pickle=True)                # When the nerve fibres fire, each element of the form (fibre_id,start_time,end_time,firing_rate)
+stim_dict = {
+	'n5':'stim5_firing_pattern.npy',
+	'n15':'stim15_firing_pattern.npy',
+	'n30':'stim30_firing_pattern.npy',
+	'constant':'constant_firing.npy'}
+firing_pattern = np.load(root+'stimuli/'+stim_dict[args.stimulus],allow_pickle=True)
 stim_strength = 300
 
 # Declare parameters
@@ -162,33 +151,6 @@ nest.Simulate(float(exp_length))
 #v = nest.GetStatus(voltmeter)[0]['events']['V_m']
 s = nest.GetStatus(spikedetector)[0]['events']
 
+# Save results
 #np.save(root+'n15_volts_a10_n15-05_s1000_LLspon.npy', np.array(v))
-np.save(root+'n15_10perc_a10_n15-05_s300_strong1500-300.npy', np.array(s))
-exit()
-
-# Process results
-from nest_mc2_output import *
-cur_simul = mc2simul()
-cur_simul.neurons = nnum
-cur_simul.stimulus = firing_pattern
-cur_simul.voltage = nest.GetStatus(voltmeter)[0]['events']['V_m']
-cur_simul.spikes = nest.GetStatus(spikedetector)[0]['events']
-
-if args.make_spikes:
-	ntnstatus("Creating h5 file of spikes")
-	make_spikes(cur_simul)
-
-if args.make_tr:
-	t1 = args.t1
-	t2 = args.t2
-	ntnstatus("Creating transmission response matrices with t1="+str(t1)+" and t2="+str(t2))
-	cur_simul.adj = adj
-	cur_simul.simplices = make_tr(cur_simul, t1, t2, args.flagser)
-
-if not args.no_plot:
-	if args.volt_plot:
-		ntnstatus("Creating voltage plot")
-		make_volt_plot(cur_simul)
-	else:
-		ntnstatus("Creating spike and volt plots")
-		make_plot(cur_simul, args.outplottitle, args.plot_simplices)
+np.save(root+str(args.stimulus)+'_10perc_a10_n15-05_s300_strong1500-300.npy', np.array(s))
