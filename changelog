@@ -9,3 +9,4 @@
 2020-05-06 Split output functions into separate file. Added input stimulus plot.
 2020-05-08 Added random noise generator. Option to make only voltage plot.
 2020-05-28 Frankensteined for particular uses. Instead of options and flags, change code.
+2020-06-01 Cleaned up hacky business. Old visualization functions still exist.
