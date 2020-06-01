@@ -9,6 +9,115 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable                     # Fo
 import scipy.sparse                                                         # For exporting transimssion response matrices
 import subprocess                                                           # For counting simplices and running flagser
 
+nnum = 31346                                                                # Number of neurons in circuit
+
+##
+## Functions that work with standalone inputs
+##
+
+# Output spike only plot
+def make_spike_plot(name,length):
+	s = np.load(name+'.npy',allow_pickle=True)[True][0]
+	fig = plt.figure(figsize=(20,6))
+	plt.gca().invert_yaxis()
+	plt.scatter(s['times'], s['senders'], s=1, marker="s", c=[(0.8353, 0.0, 0.1961) for i in range(len(s['times']))], edgecolors='none', alpha=.8)
+#	plt.set_ylabel('neuron index')
+#	ax_spikes.set_ylim(1,simulation.neurons)
+#	ax_spikes.set_xlim(0,simulation.length)
+	plt.xlim(0,length)
+	plt.tight_layout()
+	plt.savefig(name+'.png', dpi=200)
+
+
+# Transimssion response matrices from spike file
+def make_tr_fromspikes(name, length, t1, t2):
+	s = np.load(name+'.npy',allow_pickle=True)[True][0]
+	adj = scipy.sparse.load_npz('structure/adjmat_mc2.npz').toarray()
+	active_edges = []
+	for step in range(int(length//t1)):
+		print('Looking at time step '+str(step),flush=True)
+		cur_edges = []
+		for spike_index in np.where(abs(s['times']-(step+.5)*t1) < t1/2)[0]:
+			spike_time = s['times'][spike_index]
+			spiker = s['senders'][spike_index]-1
+			for alsospiked in np.intersect1d(np.nonzero(adj[spiker])[0], np.array([n-1 for n in s['senders'][np.where(abs(s['times']-spike_time-t2/2) < t2/2)[0]]])):
+				cur_edges.append(tuple({spiker,alsospiked}))
+		active_edges.append(cur_edges)
+		print('Active edges: '+str(len(cur_edges)), flush=True)
+	print('Compressing edge lists into npz file', flush=True)
+	np.savez_compressed(name+'.npz', *active_edges)
+
+
+# Run flagser on transmission response edge lists
+def flag_tr(name, flagser='/home/jlv/flagser/flagser'):
+	tr = load name
+	bettis = []
+	for step in range(len(tr)):
+		cur_bettis = []
+		# Make file for Flagser
+		print('Reading step '+str(step),flush=True)
+		f = open('step'+str(step)+'.in','w'); f.write('dim 0\n')
+		for i in range(nnum):
+			f.wwrite('0 ')
+		f.write('\ndim 1\n')
+		for edge in tr[step]:
+			f.write(str(edge[0]+1)+' '+str(edge[1]+1)+'\n')
+		f.close()
+		# Run flagser and read output file
+		print('Flagging step '+str(step),flush=True)
+		cmd = subprocess.Popen([flagser, '--out', 'step'+str(step)+'.out', 'step'+str(step)+'.in'], stdout=subprocess.DEVNULL); cmd.wait()
+		g = open('step'+str(step)+'.out','r'); L = g.readlines(); g.close()
+		bettis.append(np.array(list(map(lambda x: int(x), L[1][:-1].split(' ')[1:]))))
+		# Remove files
+		subprocess.Popen(['rm', 'step'+str(step)+'.in'], stdout=subprocess.DEVNULL)
+	np.save(name+'_TR.npy',np.array(bettis))
+
+def make_betti_curves(name):
+	fig = plt.figure(figsize=(8,6)) # default is (8,6)
+	mpl.rcParams['axes.spines.right'] = False; mpl.rcParams['axes.spines.top'] = False
+	ax1 = fig.add_subplot(4,4,1)
+
+	plt.savefig(name+'_TR.png',dpi=200)
+
+
+# Make visual plot of locations of neurons spiking
+def make_loc_plot(volt_file,number_of_steps):
+	# Load data
+	data = np.transpose(np.load(volt_file).reshape(int(number_of_steps-1),31346))
+	locs = pd.read_pickle('/home/jlv/Documents/Darbi - algoti/2019-08 University of Aberdeen/Projects/2020-03-10 New distances/2020-05-02-active-neurons/mc2_locs.pkl')
+	ranges = {'x':[min(locs.iloc[0]),max(locs.iloc[0])], 'y':[min(locs.iloc[1]),max(locs.iloc[1])], 'z':[min(locs.iloc[2]), max(locs.iloc[2])]}
+
+	# Set up figure
+	fig = plt.figure(figsize=(20,10)) # default is (8,6)
+	siz = 10
+	transp = .01
+	for s in ['axes.spines.left','axes.spines.right','axes.spines.top','axes.spines.bottom']:
+		mpl.rcParams[s] = False
+	yz = fig.add_subplot(1,3,1); xz = fig.add_subplot(1,3,2); xy = fig.add_subplot(1,3,3)
+
+	# Plot figure
+#	for t in range(number_of_steps):
+	t = 600
+	voltrange_raw = max([data[n][t] for n in range(31346)]) - min([data[n][t] for n in range(31346)])
+	voltrange = 0 if voltrange_raw < 0.0001 else voltrange_raw
+	for projh,projv,ax in zip(['y','x','x'],['z','z','y'],[yz,xz,xy]):
+		print('Plotting plane '+projh+projv,flush=True)
+		horizontal = []; vertical = []; shade = [];
+		for n in range(31346):
+			horizontal.append(locs[n][projh]); vertical.append(locs[n][projv]); shade.append(data[n][t]/voltrange if voltrange else 0);
+		ax.scatter(horizontal, vertical, marker='o', s=siz, c=[shade[n] for n in range(31346)], edgecolors='none')
+#		ax.scatter(horizontal, vertical, marker='o', s=siz, c=[(shade[n],shade[n],shade[n],transp) for n in range(31346)], edgecolors='none')
+		ax.set_xlim(ranges[projh]); ax.set_ylim(ranges[projv])
+		ax.set_xlabel(projh+projv+'-axis',fontsize=8, color=(.5,.5,.5)); ax.set_xticks([]); ax.set_yticks([])
+#		plt.text(1,0, 'Stimulus '+str(stim), fontsize=12, ha='center', va='top', transform=axA.transAxes)	
+	plt.savefig('viz_{:04d}.png'.format(t),dpi=120)
+
+
+##
+## Functions that work with deprecated simulation class. Need to be fixed
+##
+
+
 # Output plot
 def make_plot(simulation, title, plot_simplices):
 	# Set up 
@@ -79,25 +188,6 @@ def make_volt_plot(simulation):
 	plt.colorbar(fraction=.1, pad=.01, orientation='vertical', label="voltage")
 	plt.tight_layout()
 	plt.savefig('voltage_'+simulation.id+'.png', dpi=200)
-
-# Output spike only plot
-def make_spike_plot(name,length):
-	s = np.load(name+'.npy',allow_pickle=True)[True][0]
-	fig = plt.figure(figsize=(20,6))
-	plt.gca().invert_yaxis()
-	plt.scatter(s['times'], s['senders'], s=1, marker="s", c=[(0.8353, 0.0, 0.1961) for i in range(len(s['times']))], edgecolors='none', alpha=.8)
-#	plt.set_ylabel('neuron index')
-#	ax_spikes.set_ylim(1,simulation.neurons)
-#	ax_spikes.set_xlim(0,simulation.length)
-	plt.xlim(0,length)
-	plt.tight_layout()
-	plt.savefig(name+'.png', dpi=200)
-
-# Transimssion response matrices from spike file
-def make_tr_fromspikes(name, t1, t2, flagser='/home/jlv/flagser/flagser'):
-	s = np.load(name+'.npy',allow_pickle=True)[True][0]
-	return 1
-
 
 # Transimssion response matrices and simplex count
 def make_tr(simulation, t1, t2, flagser):
@@ -172,40 +262,5 @@ def make_spikes(simulation):
 	for k in spikes.keys():
 		f.create_dataset(k, data=spikes[k])
 	f.close()
-
-# Make visual plot of locations of neurons spiking
-def make_loc_plot(volt_file,number_of_steps):
-	# Load data
-	data = np.transpose(np.load(volt_file).reshape(int(number_of_steps-1),31346))
-	locs = pd.read_pickle('/home/jlv/Documents/Darbi - algoti/2019-08 University of Aberdeen/Projects/2020-03-10 New distances/2020-05-02-active-neurons/mc2_locs.pkl')
-	ranges = {'x':[min(locs.iloc[0]),max(locs.iloc[0])], 'y':[min(locs.iloc[1]),max(locs.iloc[1])], 'z':[min(locs.iloc[2]), max(locs.iloc[2])]}
-
-	# Set up figure
-	fig = plt.figure(figsize=(20,10)) # default is (8,6)
-	siz = 10
-	transp = .01
-	for s in ['axes.spines.left','axes.spines.right','axes.spines.top','axes.spines.bottom']:
-		mpl.rcParams[s] = False
-	yz = fig.add_subplot(1,3,1); xz = fig.add_subplot(1,3,2); xy = fig.add_subplot(1,3,3)
-
-	# Plot figure
-#	for t in range(number_of_steps):
-	t = 600
-	voltrange_raw = max([data[n][t] for n in range(31346)]) - min([data[n][t] for n in range(31346)])
-	voltrange = 0 if voltrange_raw < 0.0001 else voltrange_raw
-	for projh,projv,ax in zip(['y','x','x'],['z','z','y'],[yz,xz,xy]):
-		print('Plotting plane '+projh+projv,flush=True)
-		horizontal = []; vertical = []; shade = [];
-		for n in range(31346):
-			horizontal.append(locs[n][projh]); vertical.append(locs[n][projv]); shade.append(data[n][t]/voltrange if voltrange else 0);
-		ax.scatter(horizontal, vertical, marker='o', s=siz, c=[shade[n] for n in range(31346)], edgecolors='none')
-#		ax.scatter(horizontal, vertical, marker='o', s=siz, c=[(shade[n],shade[n],shade[n],transp) for n in range(31346)], edgecolors='none')
-		ax.set_xlim(ranges[projh]); ax.set_ylim(ranges[projv])
-		ax.set_xlabel(projh+projv+'-axis',fontsize=8, color=(.5,.5,.5)); ax.set_xticks([]); ax.set_yticks([])
-#		plt.text(1,0, 'Stimulus '+str(stim), fontsize=12, ha='center', va='top', transform=axA.transAxes)	
-	plt.savefig('viz_{:04d}.png'.format(t),dpi=120)
-
-
-
 
 
