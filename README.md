@@ -31,9 +31,12 @@ This will run a simulation for 100ms on the 31346-neuron mc2 Blue Brain column, 
 
 	python
 	exec(open('next_mc2_output.py').read())
-	make_spike_plot('spikes',100)
+	make_spikeplot('spikes',100)
+	make_tr_fromspikes('spikes',100,5,10)
+	flag_tr('spikes')
+	make_betticurves('spikes')
 
-Other functions to make outputs are in the file `nest_mc2_outputs.py`.
+This will also compute the transmission response of the experiment for `t1=5` and `t2=10`, compute the homology of the flagged active graph, and plot pairs of betti curves against each other. Other functions to make outputs are in the file `nest_mc2_output.py`.
 
 
 ### Options
