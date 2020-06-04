@@ -63,7 +63,7 @@ stim_dict = {
 	'n30':'stim30_firing_pattern.npy',
 	'constant':'constant_firing.npy'}
 firing_pattern = np.load(root+'stimuli/'+stim_dict[args.stimulus],allow_pickle=True)
-stim_strength = 100
+stim_strength = 50
 
 # Declare parameters
 syn_weight = 1.0                                                            # Weight of excitatory synapses
@@ -87,7 +87,7 @@ for source in targets.keys():
 		'model':'bernoulli_synapse',
 		'weight':syn_weight if exc[source] else inh_fac*syn_weight,
 		'delay':delay,
-		'p_transmit':0.12})
+		'p_transmit':0.1})
 #	if not args.no_mc2approx:  
 #		layerpair = getlayers(mc2_edges[0][i],mc2_edges[1][i])
 #		nest.Connect((mc2_edges[0][i]+1,), (mc2_edges[1][i]+1,), syn_spec={
@@ -153,4 +153,4 @@ s = nest.GetStatus(spikedetector)[0]['events']
 
 # Save results
 #np.save(root+'n15_volts_a10_n15-05_s1000_LLspon.npy', np.array(v))
-np.save(root+str(args.stimulus)+'_12perc_a11_n15-05_s100_strong1500-1perc.npy', np.array(s))
+np.save(root+str(args.stimulus)+'_.npy', np.array(s))
