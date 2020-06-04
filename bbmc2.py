@@ -1,3 +1,5 @@
+# neurotop-nest
+#
 # Based on BlueBrain neocortical microcircuit
 # https://bbp.epfl.ch/nmc-portal/web/guest/downloads#
 # Neuro-Topology Group, Institute of Mathematics, University of Aberdeen
@@ -128,7 +130,7 @@ ntnstatus('Creating ambient noise for circuit')
 weak_noise = nest.Create('noise_generator', params={'mean':1.5, 'std':0.5})
 nest.Connect(weak_noise, list(range(1,31347)), conn_spec='all_to_all')
 strong_num = 1500
-strong_perc = 0.01
+strong_perc = 0.015
 strong_times = np.random.choice([i/10 for i in range(2,exp_length*10)], size=strong_num)
 for i in range(strong_num):
 	strong_targets = list(np.random.choice(range(1,31347),size=int(nnum*strong_perc),replace=False))
@@ -151,4 +153,4 @@ nest.Simulate(float(exp_length))
 s = nest.GetStatus(spikedetector)[0]['events']        # spikes
 
 # Save results
-np.save(root+simulation_id+str(args.stimulus)+'.npy', np.array(s))
+np.save(root+'bbmc2_'+str(args.stimulus)+'_'+simulation_id+'.npy', np.array(s))
