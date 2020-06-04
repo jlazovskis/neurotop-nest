@@ -23,15 +23,16 @@ Next, clone this project. You only need the `bbmc2.py` file for everything to wo
 
 ## Running an experiment
 
-Simply call `python bbmc2.py`. This will run a simulation for 100ms on the 31346-neuron mc2 Blue Brain column, with lots of strong stimuli sent to the circuit. A spike file with a name like`bbmc2_constant_1591291009.npy` will be output. To make a visual overview of the experiment, open the file `analysis.py` and paste the name of this output spike file, adjusting the otehr parameters as necessary. The end of the file should look like this:
+Simply call `python bbmc2.py`. This will run a simulation for 100ms on the 31346-neuron mc2 Blue Brain column, with lots of strong stimuli sent to the circuit. A spike file with a name like`bbmc2_constant_1591291009.npy` will be output. To make a visual overview of the experiment, open the file `analysis.py` and paste the name of this output spike file, adjusting the other parameters as necessary. The end of the file should look like this:
 
 	nnum = 31346
-	spikes = 'bbmc2_n15_1591291009.npy'
+	spikes = 'bbmc2_constant_1591291009.npy'
 	time = 250
+	flagser='/home/user/flagser/flagser'
 	t1 = 5
 	t2 = 10
 
-Then call `python analysis.py` to analyze the output spike file. This will also compute the transmission response of the experiment for `t1=5` and `t2=10`, compute the homology of the flagged active graph, and plot pairs of betti curves against each other.
+The location of `flagser` is necessary to compute the sizes of the transmission response active graphs (in the function `flag_tr`). If you are not computing this, you do not need flagser. Then call `python analysis.py` to analyze the output spike file. This will also compute the transmission response of the experiment for `t1=5` and `t2=10`, compute the homology of the flagged active graph, and plot pairs of betti curves against each other.
 
 ### Options
 

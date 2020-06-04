@@ -47,7 +47,7 @@ def make_tr_fromspikes(name, length, t1, t2):
 
 
 # Run flagser on transmission response edge lists
-def flag_tr(name, flagser='/home/jlv/flagser/flagser'):
+def flag_tr(name):
 	tr = np.load(name+'.npz')
 	bettis = []
 	for step in range(len(tr)):
@@ -162,6 +162,7 @@ if __name__=="__main__":
 	nnum = 31346
 	spikes = 'bbmc2_n15_1591291009.npy'
 	time = 250
+	flagser='/home/jlv/flagser/flagser'
 	t1 = 5
 	t2 = 10
 	# Functions to call
