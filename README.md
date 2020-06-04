@@ -19,25 +19,19 @@ We will assume you are working in an Anaconda environment. First install NEST si
 	conda install -c conda-forge nest-simulator 
 	conda install numpy scipy pandas pickle h5py
 
-Next, clone this project. You only need the `nest_mc2.py` file for everything to work, but the other files are necessary for more complex constructions and experiments.
+Next, clone this project. You only need the `bbmc2.py` file for everything to work, but the other files are necessary for more complex constructions and experiments.
 
 ## Running an experiment
 
-Call the following command:
+Simply call `python bbmc2.py`. This will run a simulation for 100ms on the 31346-neuron mc2 Blue Brain column, with lots of strong stimuli sent to the circuit. A spike file with a name like`bbmc2_constant_1591291009.npy` will be output. To make a visual overview of the experiment, open the file `analysis.py` and paste the name of this output spike file, adjusting the otehr parameters as necessary. The end of the file should look like this:
 
-	python nest_mc2.py
+	nnum = 31346
+	spikes = 'bbmc2_n15_1591291009.npy'
+	time = 250
+	t1 = 5
+	t2 = 10
 
-This will run a simulation for 100ms on the 31346-neuron mc2 Blue Brain column, with lots of strong stimuli sent to the circuit. A spike file `spikes.npy` will be output. To make a visual overview of the experiment, call:
-
-	python
-	exec(open('next_mc2_output.py').read())
-	make_spikeplot('spikes',100)
-	make_tr_fromspikes('spikes',100,5,10)
-	flag_tr('spikes')
-	make_betticurves('spikes')
-
-This will also compute the transmission response of the experiment for `t1=5` and `t2=10`, compute the homology of the flagged active graph, and plot pairs of betti curves against each other. Other functions to make outputs are in the file `nest_mc2_output.py`.
-
+Then call `python analysis.py` to analyze the output spike file. This will also compute the transmission response of the experiment for `t1=5` and `t2=10`, compute the homology of the flagged active graph, and plot pairs of betti curves against each other.
 
 ### Options
 
