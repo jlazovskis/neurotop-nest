@@ -1,4 +1,5 @@
-# Biological neural network model in NEST simulator. Based on BlueBrain neocortical microcircuit and experiments from Frontiers paper.
+# Based on BlueBrain neocortical microcircuit
+# https://bbp.epfl.ch/nmc-portal/web/guest/downloads#
 # Neuro-Topology Group, Institute of Mathematics, University of Aberdeen
 # Authors: Jānis Lazovskis, Jason Smith
 # Date: March 2020
@@ -39,9 +40,7 @@ args = parser.parse_args()
 nest.ResetKernel()                                                          # Reset nest
 nest.SetKernelStatus({"local_num_threads": 8})                              # Run on many threads
 root = sys.argv[0][:-11]                                                    # Current working directory
-class mc2simul:                                                             # Class for simulation
-	id = datetime.now().strftime("%s")
-	length = args.time
+simulation_id = datetime.now().strftime("%s")                               # Custom ID so files are not overwritten
 
 # Load circuit info
 ntnstatus('Loading mc2 structural information')
@@ -148,9 +147,8 @@ for i in range(strong_num):
 # Run simulation
 ntnstatus("Running simulation of "+str(exp_length)+"ms")
 nest.Simulate(float(exp_length))
-#v = nest.GetStatus(voltmeter)[0]['events']['V_m']
-s = nest.GetStatus(spikedetector)[0]['events']
+#v = nest.GetStatus(voltmeter)[0]['events']['V_m']     # volts
+s = nest.GetStatus(spikedetector)[0]['events']        # spikes
 
 # Save results
-#np.save(root+'n15_volts_a10_n15-05_s1000_LLspon.npy', np.array(v))
-np.save(root+str(args.stimulus)+'_.npy', np.array(s))
+np.save(root+simulation_id+str(args.stimulus)+'.npy', np.array(s))
