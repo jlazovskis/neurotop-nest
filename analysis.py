@@ -18,6 +18,7 @@ from itertools import combinations                                          # Fo
 def make_spikeplot(name,length):
 	s = np.load(name+'.npy',allow_pickle=True)[True][0]
 	fig = plt.figure(figsize=(20,6))
+	plt.ylim(0,nnum)
 	plt.gca().invert_yaxis()
 	plt.scatter(s['times'], s['senders'], s=1, marker="s", c=[(0.8353, 0.0, 0.1961) for i in range(len(s['times']))], edgecolors='none', alpha=.8)
 #	plt.set_ylabel('neuron index')
@@ -71,43 +72,47 @@ def flag_tr(name):
 	np.save(name+'_TR.npy',np.array(bettis))
 
 # Make betti curves from flagged files
-def make_betticurves(name):
+def make_betticurves(name,params={'start':0, 'end':250, 'step':5}):
 	# Load file and make dim lists
-	bettis_bystep = np.load(name+'_TR.npy',allow_pickle=True); stepnum = len(bettis_bystep)
+	bettis_bystep = np.load(name+'_TR.npy',allow_pickle=True)
+	#stepnum = len(bettis_bystep)
+	stepfirst = params['start']//params['step']
+	steplast = params['end']//params['step']
+	stepnum = steplast-stepfirst
 	bettis_bydim = {i:[] for i in range(1,5)}
 	for i in range(1,5):
-		for step in range(stepnum):
+		for step in range(len(bettis_bystep)):
 			bettis_bydim[i].append(bettis_bystep[step][i-1] if len(bettis_bystep[step]) > i else 0)
 	linecolors = [plt.get_cmap('hsv')(i/(stepnum-1)) for i in range(stepnum)]
 
 	# Set up figure
-	siz = 30
+	siz = 40
 	fig = plt.figure(figsize=(12,10)) # default is (8,6)
 	mpl.rcParams['axes.spines.right'] = False; mpl.rcParams['axes.spines.top'] = False
 
 	# Make legend
 	axLEG = fig.add_subplot(1,1,1)
-	axLEG.set_xlim([0,3]); axLEG.set_ylim([0,3])
+	axLEG.set_xlim([0,4]); axLEG.set_ylim([0,2])
 	axLEG.set_xticks([]); axLEG.set_yticks([])
 	axLEG.axis('off')
-	axLEG.scatter([.05+2*i/stepnum for i in range(stepnum)], [.5 for i in range(stepnum)], marker='o', s=siz, c=[plt.get_cmap('hsv')(i/(stepnum-1)) for i in range(stepnum)], zorder=1, alpha=.5)
-	for i in range(stepnum-1):
+	axLEG.scatter([.05+2*i/stepnum for i in range(stepnum+1)], [.5 for i in range(stepnum+1)], marker='o', s=1.5*siz, c=[plt.get_cmap('hsv')(i/stepnum) for i in range(stepnum+1)], zorder=1, alpha=.5)
+	for i in range(stepnum):
 		axLEG.plot([.05+i*2/stepnum,.05+(i+1)*2/stepnum], [.5,.5], c=linecolors[i], zorder=-1, linewidth=3, alpha=.5)
-		if i%5 == 0:
-			plt.text(.05+i*2/stepnum, 0.45, str(i), fontsize=10, horizontalalignment='center', verticalalignment='top')
-	plt.text(.05, 0.3, 'Step along experiment', fontsize=12, horizontalalignment='left', verticalalignment='center')
+	for i in range(stepnum+1):
+		plt.text(.05+i*2/stepnum, 0.45, str(params['step']*(stepfirst+i)), fontsize=10, horizontalalignment='center', verticalalignment='top')
+	plt.text(.05, 0.3, 'Seconds along experiment', fontsize=12, horizontalalignment='left', verticalalignment='center')
 
 	# Make betti curves
-	for row in range(4):
-		for col in range(row+1,4):
-			fig.add_subplot(3,3,row*3+col); plt.xscale("symlog"); plt.yscale("symlog")
+	for row in range(3):
+		for col in range(row+1,3):
+			fig.add_subplot(2,2,row*2+col); plt.xscale("symlog"); plt.yscale("symlog")
 	axes = fig.axes[1:]
-	for dim,ax in zip(combinations(range(1,5),2),axes):
-		segments_x = [[bettis_bydim[dim[0]][i],bettis_bydim[dim[0]][i+1]] for i in range(stepnum-1)]
-		segments_y = [[bettis_bydim[dim[1]][i],bettis_bydim[dim[1]][i+1]] for i in range(stepnum-1)]
-		for i in range(stepnum-1):
+	for dim,ax in zip(combinations(range(1,4),2),axes):
+		segments_x = [[bettis_bydim[dim[0]][i],bettis_bydim[dim[0]][i+1]] for i in range(stepfirst,steplast)]
+		segments_y = [[bettis_bydim[dim[1]][i],bettis_bydim[dim[1]][i+1]] for i in range(stepfirst,steplast)]
+		for i in range(stepnum):
 			ax.plot(segments_x[i], segments_y[i], c=linecolors[i], zorder=-1, linewidth=3, alpha=.5)
-		ax.scatter(bettis_bydim[dim[0]], bettis_bydim[dim[1]], marker='o', s=siz, c=[plt.get_cmap('hsv')(i/(stepnum-1)) for i in range(stepnum)], zorder=1, alpha=.5)
+		ax.scatter(bettis_bydim[dim[0]][stepfirst:steplast+1], bettis_bydim[dim[1]][stepfirst:steplast+1], marker='o', s=siz, c=[plt.get_cmap('hsv')(i/stepnum) for i in range(stepnum+1)], zorder=1, alpha=.5)
 		ax.set_xlabel(r'$\beta_{0:g}$'.format(dim[0]), fontsize=12); ax.xaxis.set_label_coords(1.1, 0.05)
 		ax.set_ylabel(r'$\beta_{0:g}$'.format(dim[1]), fontsize=12); ax.yaxis.set_label_coords(0.03, 1.1)
 
@@ -159,14 +164,18 @@ if __name__=="__main__":
 	#   time: length of experiment
 	#     t1: t1 paramater for transmission response
 	#     t2: t2 paramater for transmission response
+	#nnum = 21663
+	#spikes = 'droso_1591989582'
+	#time = 100
 	nnum = 31346
-	spikes = 'bbmc2_n15_1591291009.npy'
+	spikes = 'bbmc2_n30_bettifocus_1592051748.npy'
 	time = 250
 	flagser='/home/jlv/flagser/flagser'
 	t1 = 5
 	t2 = 10
 	# Functions to call
+	#make_spikeplot(spikes,time)
 	make_spikeplot(spikes[:-4],time)
 	make_tr_fromspikes(spikes[:-4],time,5,10)
 	flag_tr(spikes[:-4])
-	make_betticurves(spikes[:-4])
+	make_betticurves(spikes[:-4],{'start':50, 'end':140, 'step':5})
