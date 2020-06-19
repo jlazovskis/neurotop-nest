@@ -35,13 +35,15 @@ simulation_id = datetime.now().strftime("%s")                               # Cu
 ntnstatus('Loading drosophila structural information')
 nnum = 21663                                                                                # Number of neurons in circuit
 adj = load_npz(root+'structure/weighted_adjmat_drosophila.npz').toarray().astype('int64')   # Adjacency matrix
-#exc = 
+inh = np.load(root+'structure/drosophila_inhibitory.npy')
 
 # Declare parameters
 syn_weight = 1.0                                                            # Weight of excitatory synapses
 inh_weight = -1.0                                                           # Weight of inhibitory synapses
 delay = 0.1                                                                 # Delay between neurons (used as a multiplying factor)
 exp_length = args.time                                                      # Length of experiment, in milliseconds
+stim_strength = 500
+noise_strength = 3.75
 
 # Create the circuit
 ntnstatus('Constructing circuit')
@@ -50,7 +52,7 @@ targets = {n:np.nonzero(adj[n])[0] for n in range(nnum)}
 for source in targets.keys():
 	nest.Connect((source+1,), [target+1 for target in targets[source]], conn_spec='all_to_all', syn_spec={
 		'model': 'bernoulli_synapse',
-		'weight': syn_weight,# if exc[source] else inh_weight
+		'weight': syn_weight if source not in inh else inh_weight,
 		'delay': delay,
 		'p_transmit': 0.1})
 
@@ -65,30 +67,41 @@ ntnstatus('Creating thalamic nerves for stimulus')
 #stimulus_times = [np.random.rand()*exp_length for i in range(10)]
 #stimulus_times.sort()
 #stimulus_times = [i*10.0 for i in range(1,10)]
-thalamic_targets = np.random.choice(list(range(nnum)), size=nnum//5)
-stimulus1 = nest.Create('poisson_generator', n=len(thalamic_targets))
-for thalamus in range(len(thalamic_targets)):
-	nest.Connect((stimulus1[thalamus],),(thalamic_targets[thalamus]+1,))
-for fire in range(len(thalamic_targets)):
-	nest.SetStatus((stimulus1[fire],), params={
-		 'start': 30.0,
-		 'stop': 32.0,
-		 'rate': 15000.0})
-
-thalamic_targets = np.random.choice(list(range(nnum)), size=nnum//5)
-stimulus2 = nest.Create('poisson_generator', n=len(thalamic_targets))
-for thalamus in range(len(thalamic_targets)):
-	nest.Connect((stimulus2[thalamus],),(thalamic_targets[thalamus]+1,))
-for fire in range(len(thalamic_targets)):
-	nest.SetStatus((stimulus2[fire],), params={
-		 'start': 60.0,
-		 'stop': 62.0,
-		 'rate': 15000.0})
+# thalamic_targets = np.random.choice(list(range(nnum)), size=nnum//5)
+# stimulus1 = nest.Create('poisson_generator', n=len(thalamic_targets))
+# for thalamus in range(len(thalamic_targets)):
+# 	nest.Connect((stimulus1[thalamus],),(thalamic_targets[thalamus]+1,))
+# for fire in range(len(thalamic_targets)):
+# 	nest.SetStatus((stimulus1[fire],), params={
+# 		 'start': 30.0,
+# 		 'stop': 32.0,
+# 		 'rate': 15000.0})
+#
+# thalamic_targets = np.random.choice(list(range(nnum)), size=nnum//5)
+# stimulus2 = nest.Create('poisson_generator', n=len(thalamic_targets))
+# for thalamus in range(len(thalamic_targets)):
+# 	nest.Connect((stimulus2[thalamus],),(thalamic_targets[thalamus]+1,))
+# for fire in range(len(thalamic_targets)):
+# 	nest.SetStatus((stimulus2[fire],), params={
+# 		 'start': 60.0,
+# 		 'stop': 62.0,
+# 		 'rate': 15000.0})
+fibres = np.load(root+'stimuli/drosophila_optic_fibres.npy', allow_pickle=True)
+firing_pattern = np.load(root+'stimuli/drosophila_optic_stimulus.npy', allow_pickle=True)
+stimuli = nest.Create('poisson_generator', n=len(fibres))
+for stimulus in range(len(fibres)):
+	for j in fibres[stimulus]:
+		nest.Connect((stimuli[stimulus],),(j+1,))
+for fire in firing_pattern:
+	nest.SetStatus((stimuli[int(fire[0])],), params={
+		 'start': round(float(fire[1]),1),
+		 'stop': round(float(fire[2]),1),
+		 'rate': float(fire[3]*stim_strength)})
 
 
 # Add ambient noise
 ntnstatus('Creating ambient noise for circuit')
-weak_noise = nest.Create('noise_generator', params={'mean':2.0, 'std':0.5})
+weak_noise = nest.Create('noise_generator', params={'mean':float(noise_strength), 'std':float(noise_strength*0.1)})
 nest.Connect(weak_noise, list(range(1,nnum+1)), conn_spec='all_to_all')
 
 # Connect voltage and spike readers
@@ -111,3 +124,4 @@ nest.Simulate(float(exp_length))
 #v = nest.GetStatus(voltmeter)[0]['events']['V_m']     # volts
 s = nest.GetStatus(spikedetector)[0]['events']        # spikes
 np.save(root+'droso_'+simulation_id+'.npy', np.array(s))
+print("Simulation id: "+simulation_id)

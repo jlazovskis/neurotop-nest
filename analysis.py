@@ -3,7 +3,7 @@
 # Commands for analysing NEST spike and volt output
 
 # Packages
-import h5py                                                                 # For exporting h5 files
+#import h5py                                                                 # For exporting h5 files
 import numpy as np                                                          # For reading of files
 import pandas as pd                                                         # For reading of files
 from functools import reduce                                                # For combining simplices
@@ -13,6 +13,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable                     # Fo
 import scipy.sparse                                                         # For exporting transimssion response matrices
 import subprocess                                                           # For counting simplices and running flagser
 from itertools import combinations                                          # For accessing specific plots
+import os                                                                   # For deleting files
 
 # Output spike only plot
 def make_spikeplot(name,length):
@@ -62,6 +63,8 @@ def flag_tr(name):
 			f.write(str(edge[0])+' '+str(edge[1])+'\n')
 		f.close()
 		# Run flagser and read output file
+		if os.path.exists('step'+str(step)+'.out'):
+			os.remove('step'+str(step)+'.out')
 		cmd = subprocess.Popen([flagser, '--out', 'step'+str(step)+'.out', 'step'+str(step)+'.in'], stdout=subprocess.DEVNULL); cmd.wait()
 		g = open('step'+str(step)+'.out','r'); L = g.readlines(); g.close()
 		print('Step '+str(step)+': '+str(list(map(lambda x: int(x), L[1][:-1].split(' ')[1:]))),flush=True)
@@ -78,7 +81,7 @@ def make_betticurves(name,params={'start':0, 'end':250, 'step':5}):
 	#stepnum = len(bettis_bystep)
 	stepfirst = params['start']//params['step']
 	steplast = params['end']//params['step']
-	stepnum = steplast-stepfirst
+	stepnum = steplast-stepfirst-1
 	bettis_bydim = {i:[] for i in range(1,5)}
 	for i in range(1,5):
 		for step in range(len(bettis_bystep)):
@@ -108,8 +111,8 @@ def make_betticurves(name,params={'start':0, 'end':250, 'step':5}):
 			fig.add_subplot(2,2,row*2+col); plt.xscale("symlog"); plt.yscale("symlog")
 	axes = fig.axes[1:]
 	for dim,ax in zip(combinations(range(1,4),2),axes):
-		segments_x = [[bettis_bydim[dim[0]][i],bettis_bydim[dim[0]][i+1]] for i in range(stepfirst,steplast)]
-		segments_y = [[bettis_bydim[dim[1]][i],bettis_bydim[dim[1]][i+1]] for i in range(stepfirst,steplast)]
+		segments_x = [[bettis_bydim[dim[0]][i],bettis_bydim[dim[0]][i+1]] for i in range(stepfirst,steplast-1)]
+		segments_y = [[bettis_bydim[dim[1]][i],bettis_bydim[dim[1]][i+1]] for i in range(stepfirst,steplast-1)]
 		for i in range(stepnum):
 			ax.plot(segments_x[i], segments_y[i], c=linecolors[i], zorder=-1, linewidth=3, alpha=.5)
 		ax.scatter(bettis_bydim[dim[0]][stepfirst:steplast+1], bettis_bydim[dim[1]][stepfirst:steplast+1], marker='o', s=siz, c=[plt.get_cmap('hsv')(i/stepnum) for i in range(stepnum+1)], zorder=1, alpha=.5)
@@ -150,7 +153,7 @@ def make_loc_plot(volt_file,number_of_steps):
 #		ax.scatter(horizontal, vertical, marker='o', s=siz, c=[(shade[n],shade[n],shade[n],transp) for n in range(31346)], edgecolors='none')
 		ax.set_xlim(ranges[projh]); ax.set_ylim(ranges[projv])
 		ax.set_xlabel(projh+projv+'-axis',fontsize=8, color=(.5,.5,.5)); ax.set_xticks([]); ax.set_yticks([])
-#		plt.text(1,0, 'Stimulus '+str(stim), fontsize=12, ha='center', va='top', transform=axA.transAxes)	
+#		plt.text(1,0, 'Stimulus '+str(stim), fontsize=12, ha='center', va='top', transform=axA.transAxes)
 	plt.savefig('viz_{:04d}.png'.format(t),dpi=120)
 
 
@@ -164,13 +167,14 @@ if __name__=="__main__":
 	#   time: length of experiment
 	#     t1: t1 paramater for transmission response
 	#     t2: t2 paramater for transmission response
-	#nnum = 21663
-	#spikes = 'droso_1591989582'
-	#time = 100
-	nnum = 31346
-	spikes = 'bbmc2_n30_bettifocus_1592051748.npy'
-	time = 250
-	flagser='/home/jlv/flagser/flagser'
+	nnum = 21663
+	spikes = 'droso_1592569281.npy'
+	time = 100
+	# nnum = 31346
+	# spikes = 'bbmc2_n30_bettifocus_1592051748.npy'
+	# time = 250
+	#flagser='/home/jlv/flagser/flagser'
+	flagser='/home/jason/Documents/flagsers/flagser-mod/flagser'
 	t1 = 5
 	t2 = 10
 	# Functions to call
@@ -178,4 +182,4 @@ if __name__=="__main__":
 	make_spikeplot(spikes[:-4],time)
 	make_tr_fromspikes(spikes[:-4],time,5,10)
 	flag_tr(spikes[:-4])
-	make_betticurves(spikes[:-4],{'start':50, 'end':140, 'step':5})
+	make_betticurves(spikes[:-4],{'start':10, 'end':100, 'step':5})
