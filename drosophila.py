@@ -16,6 +16,8 @@ import numpy as np                                                          # Fo
 # Auxiliary: Formatted printer for messages
 def ntnstatus(message):
 	print("\n"+datetime.now().strftime("%b %d %H:%M:%S")+" neurotop-nest: "+message, flush=True)
+def ntnsubstatus(message):
+	print('    '+message, flush=True)
 
 # Read arguments
 parser = argparse.ArgumentParser(
@@ -35,11 +37,12 @@ simulation_id = datetime.now().strftime("%s")                               # Cu
 ntnstatus('Loading drosophila structural information')
 nnum = 21663                                                                                # Number of neurons in circuit
 adj = load_npz(root+'structure/weighted_adjmat_drosophila.npz').toarray().astype('int64')   # Adjacency matrix
-inh = np.load(root+'structure/drosophila_inhibitory.npy')
+inh = np.load(root+'structure/drosophila_inhibitory.npy')                                   # Binarty array indicating whether or not neuron is inhibitory
 
 # Declare parameters
-syn_weight = 1.0                                                            # Weight of excitatory synapses
-inh_weight = -1.0                                                           # Weight of inhibitory synapses
+exc_weight = 0.25                                                           # Weight (as a factor) of excitatory synapses
+inh_weight = -5.0                                                           # Weight (as a factor) of inhibitory synapses
+unique_weights = 30                                                         # Number of different synapse weights to observe. Starts with smallest nonzero weight. Max is 108. 
 delay = 0.1                                                                 # Delay between neurons (used as a multiplying factor)
 exp_length = args.time                                                      # Length of experiment, in milliseconds
 stim_strength = 500
@@ -48,13 +51,27 @@ noise_strength = 3.75
 # Create the circuit
 ntnstatus('Constructing circuit')
 network = nest.Create('izhikevich', n=nnum, params={'a':1.1})
-targets = {n:np.nonzero(adj[n])[0] for n in range(nnum)}
+weights = {n:np.unique(adj[n],return_counts=True) for n in range(nnum)}
+#targets = {n:np.nonzero(adj[n])[0] for n in range(nnum)}
+targets = {n:{w:np.where(adj[n] == w)[0] for w in weights[n][0][1:unique_weights+1]} for n in range(nnum)}
+largest_weights = []
 for source in targets.keys():
-	nest.Connect((source+1,), [target+1 for target in targets[source]], conn_spec='all_to_all', syn_spec={
-		'model': 'bernoulli_synapse',
-		'weight': inh_weight if inh[source] else syn_weight
-		'delay': delay,
-		'p_transmit': 0.1})
+	if len(weights[source][0]) > unique_weights+1:
+		weight_ceiling = weights[source][0][unique_weights]
+		targets[source][weight_ceiling] = np.where(adj[source] >= weight_ceiling)[0]
+		largest_weights.append(weight_ceiling)
+	for weight in targets[source].keys():
+		nest.Connect((source+1,), [target+1 for target in targets[source][weight]], conn_spec='all_to_all', syn_spec={
+			'model': 'bernoulli_synapse',
+			'weight': weight*inh_weight if inh[source] else weight*exc_weight,
+			'delay': delay,
+			'p_transmit': 0.1})
+if largest_weights != []:
+	missed = sum([sum(weights[n][1][unique_weights+1:]) for n in range(nnum)])
+	ntnsubstatus('Clipped weights of '+str(missed)+' synapses ({0:.3f} percent)'.format(100*missed/3413160))
+	ntnsubstatus('Average clipped weight was {0:.2f}'.format(sum(largest_weights)/len(largest_weights)))
+else:
+	ntnsubstatus('All unique synapse weights observed')
 
 # Define stimulus and connect it to neurons
 #ntnstatus('Creating spikes for stimulus')
@@ -124,4 +141,4 @@ nest.Simulate(float(exp_length))
 #v = nest.GetStatus(voltmeter)[0]['events']['V_m']     # volts
 s = nest.GetStatus(spikedetector)[0]['events']        # spikes
 np.save(root+'droso_'+simulation_id+'.npy', np.array(s))
-print("Simulation id: "+simulation_id)
+ntnsubstatus("Simulation id: "+simulation_id)
