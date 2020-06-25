@@ -116,15 +116,15 @@ def make_betticurves(name,params={'start':0, 'end':250, 'step':5}):
 
 	# Set up figure
 	siz = 40
-	fig = plt.figure(figsize=(12,10)) # default is (8,6)
+	fig = plt.figure(figsize=(18,4)) # default is (8,6)
 	mpl.rcParams['axes.spines.right'] = False; mpl.rcParams['axes.spines.top'] = False
 
 	# Make legend
-	axLEG = fig.add_subplot(1,1,1)
-	axLEG.set_xlim([0,4]); axLEG.set_ylim([0,2])
+	axLEG = fig.add_subplot(1,4,1)
+	axLEG.set_xlim([0,2.1]); axLEG.set_ylim([0,1])
 	axLEG.set_xticks([]); axLEG.set_yticks([])
 	axLEG.axis('off')
-	axLEG.scatter([.05+2*i/stepnum for i in range(stepnum+1)], [.5 for i in range(stepnum+1)], marker='o', s=1.5*siz, c=[plt.get_cmap('hsv')(i/stepnum) for i in range(stepnum+1)], zorder=1, alpha=.5)
+	axLEG.scatter([.05+2*i/stepnum for i in range(stepnum+1)], [.5 for i in range(stepnum+1)], marker='o', s=1.5*siz, c=[plt.get_cmap('hsv')(i/stepnum) for i in range(stepnum+1)], zorder=1, alpha=.5, edgecolors='none')
 	for i in range(stepnum):
 		axLEG.plot([.05+i*2/stepnum,.05+(i+1)*2/stepnum], [.5,.5], c=linecolors[i], zorder=-1, linewidth=3, alpha=.5)
 	for i in range(stepnum+1):
@@ -132,22 +132,35 @@ def make_betticurves(name,params={'start':0, 'end':250, 'step':5}):
 	plt.text(.05, 0.3, 'Seconds along experiment', fontsize=12, horizontalalignment='left', verticalalignment='center')
 
 	# Make betti curves
-	for row in range(3):
-		for col in range(row+1,3):
-			fig.add_subplot(2,2,row*2+col); plt.xscale("symlog"); plt.yscale("symlog")
+	fig.add_subplot(1,4,2); plt.xscale("symlog"); plt.yscale("symlog")
+	fig.add_subplot(1,4,3); plt.xscale("symlog"); plt.yscale("symlog")
+	fig.add_subplot(1,4,4); plt.xscale("symlog"); plt.yscale("symlog")
 	axes = fig.axes[1:]
 	for dim,ax in zip(combinations(range(1,4),2),axes):
-		segments_x = [[bettis_bydim[dim[0]][i],bettis_bydim[dim[0]][i+1]] for i in range(stepfirst,steplast-1)]
-		segments_y = [[bettis_bydim[dim[1]][i],bettis_bydim[dim[1]][i+1]] for i in range(stepfirst,steplast-1)]
+		segments_x = [[bettis_bydim[dim[0]][i],bettis_bydim[dim[0]][i+1]] for i in range(stepfirst,steplast)]
+		segments_y = [[bettis_bydim[dim[1]][i],bettis_bydim[dim[1]][i+1]] for i in range(stepfirst,steplast)]
 		for i in range(stepnum):
 			ax.plot(segments_x[i], segments_y[i], c=linecolors[i], zorder=-1, linewidth=3, alpha=.5)
-		ax.scatter(bettis_bydim[dim[0]][stepfirst:steplast+1], bettis_bydim[dim[1]][stepfirst:steplast+1], marker='o', s=siz, c=[plt.get_cmap('hsv')(i/stepnum) for i in range(stepnum+1)], zorder=1, alpha=.5)
-		ax.set_xlabel(r'$\beta_{0:g}$'.format(dim[0]), fontsize=12); ax.xaxis.set_label_coords(1.1, 0.05)
-		ax.set_ylabel(r'$\beta_{0:g}$'.format(dim[1]), fontsize=12); ax.yaxis.set_label_coords(0.03, 1.1)
+		ax.scatter(bettis_bydim[dim[0]][stepfirst:steplast+1], bettis_bydim[dim[1]][stepfirst:steplast+1], marker='o', s=siz, c=[plt.get_cmap('hsv')(i/stepnum) for i in range(stepnum+2)], zorder=1, alpha=.5, edgecolors='none')
+		ax.set_xlabel(r'$\beta_{0:g}$'.format(dim[0]), fontsize=12); ax.xaxis.set_label_coords(1.08, 0.04)
+		ax.set_ylabel(r'$\beta_{0:g}$'.format(dim[1]), fontsize=12); ax.yaxis.set_label_coords(0.03, 1.05)
 
 	# Export
-	fig.subplots_adjust(wspace=0.4, hspace=0.45, right=.94, left=0.05, top=0.93, bottom=0.04)
+	fig.subplots_adjust(wspace=0.3, hspace=0.45, right=.96, left=0.02, top=0.90, bottom=0.08)
 	plt.savefig(name+'_betticurves.png',dpi=200)
+
+# Combine two output pictures
+def combine_spikes_bettis(name):
+	widths = []
+	for suffix in ['.png','_betticurves.png']:
+		cmd = subprocess.Popen(['file',name+suffix],stdout=subprocess.PIPE,stderr=subprocess.DEVNULL)
+		out = cmd.communicate()[0].decode('utf-8').split('\n')[:-1]
+		widths.append(int(out[0].split(' ')[4]))
+	cmd = subprocess.Popen(['convert',name+'.png','-resize',str(min(widths)),'top.png'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL); cmd.wait()
+	cmd = subprocess.Popen(['convert',name+'_betticurves.png','-resize',str(min(widths)),'bottom.png'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL); cmd.wait()
+	cmd = subprocess.Popen(['convert','top.png','bottom.png','-append',name+'_spikes_bettis.png'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL); cmd.wait()
+	subprocess.Popen(['rm','top.png'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL);
+	subprocess.Popen(['rm','bottom.png'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL);
 
 
 # Make visual plot of locations of neurons spiking
@@ -188,11 +201,11 @@ def make_loc_plot(volt_file,number_of_steps):
 ##
 
 if __name__=="__main__":
-	#    num: number of neurons in circuit
-	# spikes: name of output spike file
-	#   time: length of experiment
-	#     t1: t1 paramater for transmission response
-	#     t2: t2 paramater for transmission response
+	##    num: number of neurons in circuit
+	## spikes: name of output spike file
+	##   time: length of experiment
+	##     t1: t1 paramater for transmission response
+	##     t2: t2 paramater for transmission response
 	nnum = 21663
 	spikes = 'droso_1593005608'
 	time = 100
@@ -203,9 +216,9 @@ if __name__=="__main__":
 	#flagser='/home/jason/Documents/flagsers/flagser-mod/flagser'
 	t1 = 5
 	t2 = 10
-	# Functions to call
 	#make_spikeplot(spikes,time,'bbmc2')
-	make_spikeplot(spikes,time,step=5,circuit='drosophila')
+	#make_spikeplot(spikes,time,step=5,circuit='drosophila')
 	#make_tr_fromspikes(spikes,time,5,10)
 	#flag_tr(spikes)
-	#make_betticurves(spikes,{'start':10, 'end':100, 'step':5})
+	#make_betticurves(spikes,{'start':10, 'end':95, 'step':5})
+	combine_spikes_bettis(spikes)
