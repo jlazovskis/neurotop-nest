@@ -48,7 +48,7 @@ simulation_id = datetime.now().strftime("%s")                               # Cu
 ntnstatus('Loading mc2 structural information')
 nnum = 31346                                                                # Number of neurons in circuit
 adj = load_npz(root+'structure/adjmat_mc2.npz').toarray()                   # Adjacency matrix
-exc = np.load(root+'structure/isneuronexcitatory_mc2.npy')                  # Binary list indicating if neuron is excitatory or not
+exc = np.load(root+'structure/bbmc2_excitatory.npy')                        # Binary list indicating if neuron is excitatory or not
 mc2_delays = np.load(root+'structure/distances_mc2.npz')['data']            # Interpret distances as delays
 mc2_layers = np.load(root+'structure/layersize_mc2.npy')                    # Size of mc2 layers (for interpreting structural information)
 mc2_layers_summed = [sum(mc2_layers[:i]) for i in range(55)]                # Summed layer sizes for easier access
