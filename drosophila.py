@@ -52,7 +52,7 @@ targets = {n:np.nonzero(adj[n])[0] for n in range(nnum)}
 for source in targets.keys():
 	nest.Connect((source+1,), [target+1 for target in targets[source]], conn_spec='all_to_all', syn_spec={
 		'model': 'bernoulli_synapse',
-		'weight': syn_weight if source not in inh else inh_weight,
+		'weight': inh_weight if inh[source] else syn_weight
 		'delay': delay,
 		'p_transmit': 0.1})
 
