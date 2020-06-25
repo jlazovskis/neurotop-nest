@@ -16,16 +16,42 @@ from itertools import combinations                                          # Fo
 import os                                                                   # For deleting files
 
 # Output spike only plot
-def make_spikeplot(name,length):
-	s = np.load(name+'.npy',allow_pickle=True)[True][0]
-	fig = plt.figure(figsize=(20,6))
-	plt.ylim(0,nnum)
-	plt.gca().invert_yaxis()
-	plt.scatter(s['times'], s['senders'], s=1, marker="s", c=[(0.8353, 0.0, 0.1961) for i in range(len(s['times']))], edgecolors='none', alpha=.8)
-#	plt.set_ylabel('neuron index')
-#	ax_spikes.set_ylim(1,simulation.neurons)
-#	ax_spikes.set_xlim(0,simulation.length)
+def make_spikeplot(name,length,step=5,circuit='bbmc2'):
+
+	# Set styles and lists
+	c_exc = (0.8353, 0.0, 0.1961)
+	c_inh = (0.0, 0.1176, 0.3843)
+	c_1 = c_exc if circuit == 'bbmc2' else c_inh
+	c_0 = c_inh if circuit == 'bbmc2' else c_exc
+	spike_file = np.load(name+'.npy',allow_pickle=True)[True][0]
+	type_list = np.load('structure/bbmc2_excitatory.npy') if circuit == 'bbmc2' else np.load('structure/drosophila_inhibitory.npy')
+	type_length = len(np.nonzero(type_list)[0])
+	color_list = [c_1 if type_list[sender-1] else c_0 for sender in spike_file['senders']]
+
+	# Set up figure
+	fig, ax_spikes = plt.subplots(figsize=(20,6))
 	plt.xlim(0,length)
+	ax_spikes.set_ylim(0,nnum); ax_spikes.invert_yaxis()
+	ax_percentage = ax_spikes.twinx(); ax_percentage.set_ylim(0,1)
+
+	# Plot individual spikes
+	ax_spikes.scatter(spike_file['times'], spike_file['senders'], s=1, marker="s", c=color_list, edgecolors='none', alpha=.8)
+	ax_spikes.set_ylabel('neuron index')
+
+	# Plot how much is spiking
+	step_num = length//step
+	times_by_timebin = [np.where(abs(np.array(spike_file['times'])-(t+.5)*step) < step/2)[0] for t in range(step_num)]
+	type1_by_timebin = [[0]*nnum for t in range(step_num)]
+	type0_by_timebin = [[0]*nnum for t in range(step_num)]
+	for t in range(step_num):
+		for sender in np.unique(np.array(spike_file['senders'])[times_by_timebin[t]]):
+			type1_by_timebin[t][sender-1] = type_list[sender-1]
+			type0_by_timebin[t][sender-1] = not type_list[sender-1]
+	ax_percentage.step([t*step for t in range(1,step_num+1)], [np.count_nonzero(np.array(timebin))/type_length for timebin in type1_by_timebin], color=c_1)
+	ax_percentage.step([t*step for t in range(1,step_num+1)], [np.count_nonzero(np.array(timebin))/(nnum-type_length) for timebin in type0_by_timebin], color=c_0)
+	ax_percentage.set_ylabel('percentage spiking')
+
+	# Format and save figure
 	plt.tight_layout()
 	plt.savefig(name+'.png', dpi=200)
 
@@ -168,18 +194,18 @@ if __name__=="__main__":
 	#     t1: t1 paramater for transmission response
 	#     t2: t2 paramater for transmission response
 	nnum = 21663
-	spikes = 'droso_1592569281.npy'
+	spikes = 'droso_1593005608'
 	time = 100
 	# nnum = 31346
-	# spikes = 'bbmc2_n30_bettifocus_1592051748.npy'
+	# spikes = 'bbmc2_n30_bettifocus_1592051748'
 	# time = 250
-	#flagser='/home/jlv/flagser/flagser'
-	flagser='/home/jason/Documents/flagsers/flagser-mod/flagser'
+	flagser='/home/jlv/flagser/flagser'
+	#flagser='/home/jason/Documents/flagsers/flagser-mod/flagser'
 	t1 = 5
 	t2 = 10
 	# Functions to call
-	#make_spikeplot(spikes,time)
-	make_spikeplot(spikes[:-4],time)
-	make_tr_fromspikes(spikes[:-4],time,5,10)
-	flag_tr(spikes[:-4])
-	make_betticurves(spikes[:-4],{'start':10, 'end':100, 'step':5})
+	#make_spikeplot(spikes,time,'bbmc2')
+	make_spikeplot(spikes,time,step=5,circuit='drosophila')
+	#make_tr_fromspikes(spikes,time,5,10)
+	#flag_tr(spikes)
+	#make_betticurves(spikes,{'start':10, 'end':100, 'step':5})
