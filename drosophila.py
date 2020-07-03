@@ -71,9 +71,8 @@ for source in tqdm.tqdm(targets.keys()):
 		nest.Connect((source+1,), [target+1 for target in targets[source][weight]], conn_spec='all_to_all', syn_spec={
 			'model': 'bernoulli_synapse',
 			'weight': weight,
-			'delay': delay if weight<0 else 0,                               # Delay is 0 if connection is inhibitory
+			'delay': delay if weight>0 else 0,                               # Delay is 0 if connection is inhibitory
 			'p_transmit': 0.1})
-ntnsubstatus('All unique synapse weights observed')
 
 # Load stimulus and connect it to neurons
 ntnstatus('Creating thalamic nerves for stimulus')
