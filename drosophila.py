@@ -12,6 +12,8 @@ import argparse                                                             # Fo
 from datetime import datetime                                               # For giving messages
 from scipy.sparse import load_npz                                           # For reading of files
 import numpy as np                                                          # For reading of files
+import random
+import tqdm
 
 # Auxiliary: Formatted printer for messages
 def ntnstatus(message):
@@ -37,72 +39,44 @@ simulation_id = datetime.now().strftime("%s")                               # Cu
 ntnstatus('Loading drosophila structural information')
 nnum = 21663                                                                                # Number of neurons in circuit
 adj = load_npz(root+'structure/weighted_adjmat_drosophila.npz').toarray().astype('int64')   # Adjacency matrix
-inh = np.load(root+'structure/drosophila_inhibitory.npy')                                   # Binarty array indicating whether or not neuron is inhibitory
+
+# Select which connections to be inhibitory                                                                # Uncomment next four lines to select new inhibitory connections
+# inh_prop = 0.1                                                                                           # Proportion of connections which are inhibitory
+# edges=np.where(adj)                                                                                      # Get all connections
+# inh=[(edges[0][i],edges[1][i]) for i in random.sample(range(len(edges[0])),int(len(edges[0])*inh_prop))] # randomly select some to be inhibitory
+# np.save(root+'structure/drosophila_inhibitory.npy',inh)
+inh = np.load(root+'structure/drosophila_inhibitory.npy')                   # list of pairs (X,Y) indicating X->Y is an inhibitory edge
 
 # Declare parameters
 exc_weight = 0.25                                                           # Weight (as a factor) of excitatory synapses
 inh_weight = -5.0                                                           # Weight (as a factor) of inhibitory synapses
-unique_weights = 30                                                         # Number of different synapse weights to observe. Starts with smallest nonzero weight. Max is 108. 
 delay = 0.1                                                                 # Delay between neurons (used as a multiplying factor)
 exp_length = args.time                                                      # Length of experiment, in milliseconds
-stim_strength = 500
-noise_strength = 3.75
+stim_strength = 1000
+noise_strength = 2.5
+
+# Adjust weights
+adj = adj*exc_weight                                                        # Adjust excitatory weight by exc_weight factor
+for i in inh:
+	adj[i[0]][i[1]] = adj[i[0]][i[1]]*inh_weight                            # Set inhibitory weights to negative
+
 
 # Create the circuit
 ntnstatus('Constructing circuit')
 network = nest.Create('izhikevich', n=nnum, params={'a':1.1})
 weights = {n:np.unique(adj[n],return_counts=True) for n in range(nnum)}
-#targets = {n:np.nonzero(adj[n])[0] for n in range(nnum)}
-targets = {n:{w:np.where(adj[n] == w)[0] for w in weights[n][0][1:unique_weights+1]} for n in range(nnum)}
-largest_weights = []
-for source in targets.keys():
-	if len(weights[source][0]) > unique_weights+1:
-		weight_ceiling = weights[source][0][unique_weights]
-		targets[source][weight_ceiling] = np.where(adj[source] >= weight_ceiling)[0]
-		largest_weights.append(weight_ceiling)
+targets = {n:{w:np.where(adj[n] == w)[0] for w in weights[n][0]} for n in range(nnum)}
+for source in tqdm.tqdm(targets.keys()):
 	for weight in targets[source].keys():
 		nest.Connect((source+1,), [target+1 for target in targets[source][weight]], conn_spec='all_to_all', syn_spec={
 			'model': 'bernoulli_synapse',
-			'weight': weight*inh_weight if inh[source] else weight*exc_weight,
-			'delay': delay,
+			'weight': weight,
+			'delay': delay if weight<0 else 0,                               # Delay is 0 if connection is inhibitory
 			'p_transmit': 0.1})
-if largest_weights != []:
-	missed = sum([sum(weights[n][1][unique_weights+1:]) for n in range(nnum)])
-	ntnsubstatus('Clipped weights of '+str(missed)+' synapses ({0:.3f} percent)'.format(100*missed/3413160))
-	ntnsubstatus('Average clipped weight was {0:.2f}'.format(sum(largest_weights)/len(largest_weights)))
-else:
-	ntnsubstatus('All unique synapse weights observed')
+ntnsubstatus('All unique synapse weights observed')
 
-# Define stimulus and connect it to neurons
-#ntnstatus('Creating spikes for stimulus')
-#stimulus = nest.Create('spike_generator', params={'spike_times': [50.0,51.0,52.0,500.0], 'precise_times':True})
-#thalamic_targets = np.random.choice(list(range(nnum)), size=nnum//2)
-#nest.Connect(stimulus, [target+1 for target in thalamic_targets], conn_spec='all_to_all')
-
-# Define stimulus and connect it to neurons
+# Load stimulus and connect it to neurons
 ntnstatus('Creating thalamic nerves for stimulus')
-#stimulus_times = [np.random.rand()*exp_length for i in range(10)]
-#stimulus_times.sort()
-#stimulus_times = [i*10.0 for i in range(1,10)]
-# thalamic_targets = np.random.choice(list(range(nnum)), size=nnum//5)
-# stimulus1 = nest.Create('poisson_generator', n=len(thalamic_targets))
-# for thalamus in range(len(thalamic_targets)):
-# 	nest.Connect((stimulus1[thalamus],),(thalamic_targets[thalamus]+1,))
-# for fire in range(len(thalamic_targets)):
-# 	nest.SetStatus((stimulus1[fire],), params={
-# 		 'start': 30.0,
-# 		 'stop': 32.0,
-# 		 'rate': 15000.0})
-#
-# thalamic_targets = np.random.choice(list(range(nnum)), size=nnum//5)
-# stimulus2 = nest.Create('poisson_generator', n=len(thalamic_targets))
-# for thalamus in range(len(thalamic_targets)):
-# 	nest.Connect((stimulus2[thalamus],),(thalamic_targets[thalamus]+1,))
-# for fire in range(len(thalamic_targets)):
-# 	nest.SetStatus((stimulus2[fire],), params={
-# 		 'start': 60.0,
-# 		 'stop': 62.0,
-# 		 'rate': 15000.0})
 fibres = np.load(root+'stimuli/drosophila_optic_fibres.npy', allow_pickle=True)
 firing_pattern = np.load(root+'stimuli/drosophila_optic_stimulus.npy', allow_pickle=True)
 stimuli = nest.Create('poisson_generator', n=len(fibres))

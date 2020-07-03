@@ -207,18 +207,18 @@ if __name__=="__main__":
 	##     t1: t1 paramater for transmission response
 	##     t2: t2 paramater for transmission response
 	nnum = 21663
-	spikes = 'droso_1593005608'
+	spikes = 'droso_1593525801'
 	time = 100
 	# nnum = 31346
 	# spikes = 'bbmc2_n30_bettifocus_1592051748'
 	# time = 250
-	flagser='/home/jlv/flagser/flagser'
-	#flagser='/home/jason/Documents/flagsers/flagser-mod/flagser'
+	#flagser='/home/jlv/flagser/flagser'
+	flagser='/home/jason/Documents/flagsers/flagser-mod/flagser'
 	t1 = 5
 	t2 = 10
 	#make_spikeplot(spikes,time,'bbmc2')
-	#make_spikeplot(spikes,time,step=5,circuit='drosophila')
-	#make_tr_fromspikes(spikes,time,5,10)
-	#flag_tr(spikes)
-	#make_betticurves(spikes,{'start':10, 'end':95, 'step':5})
+	make_spikeplot(spikes,time,step=5,circuit='drosophila')
+	make_tr_fromspikes(spikes,time,5,10)
+	flag_tr(spikes)
+	make_betticurves(spikes,{'start':10, 'end':95, 'step':5})
 	combine_spikes_bettis(spikes)
