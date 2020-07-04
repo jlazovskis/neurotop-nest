@@ -16,17 +16,20 @@ from itertools import combinations                                          # Fo
 import os                                                                   # For deleting files
 
 # Output spike only plot
-def make_spikeplot(name,length,step=5,circuit='bbmc2'):
+def make_spikeplot(name,length,step=5,circuit='bbmc2',recognize_inh=True):
 
 	# Set styles and lists
 	c_exc = (0.8353, 0.0, 0.1961)
 	c_inh = (0.0, 0.1176, 0.3843)
-	c_1 = c_exc if circuit == 'bbmc2' else c_inh
-	c_0 = c_inh if circuit == 'bbmc2' else c_exc
 	spike_file = np.load(name+'.npy',allow_pickle=True)[True][0]
-	type_list = np.load('structure/bbmc2_excitatory.npy') if circuit == 'bbmc2' else np.load('structure/drosophila_inhibitory.npy')
-	type_length = len(np.nonzero(type_list)[0])
-	color_list = [c_1 if type_list[sender-1] else c_0 for sender in spike_file['senders']]
+	if recognize_inh:
+		c_1 = c_exc if circuit == 'bbmc2' else c_inh
+		c_0 = c_inh if circuit == 'bbmc2' else c_exc
+		type_list = np.load('structure/bbmc2_excitatory.npy') if circuit == 'bbmc2' else np.load('structure/drosophila_inhibitory.npy')
+		type_length = len(np.nonzero(type_list)[0])
+		color_list = [c_1 if type_list[sender-1] else c_0 for sender in spike_file['senders']]
+	else:
+		color_list = [c_exc for sender in spike_file['senders']]
 
 	# Set up figure
 	fig, ax_spikes = plt.subplots(figsize=(20,6))
@@ -42,13 +45,20 @@ def make_spikeplot(name,length,step=5,circuit='bbmc2'):
 	step_num = length//step
 	times_by_timebin = [np.where(abs(np.array(spike_file['times'])-(t+.5)*step) < step/2)[0] for t in range(step_num)]
 	type1_by_timebin = [[0]*nnum for t in range(step_num)]
-	type0_by_timebin = [[0]*nnum for t in range(step_num)]
-	for t in range(step_num):
-		for sender in np.unique(np.array(spike_file['senders'])[times_by_timebin[t]]):
-			type1_by_timebin[t][sender-1] = type_list[sender-1]
-			type0_by_timebin[t][sender-1] = not type_list[sender-1]
-	ax_percentage.step([t*step for t in range(1,step_num+1)], [np.count_nonzero(np.array(timebin))/type_length for timebin in type1_by_timebin], color=c_1)
-	ax_percentage.step([t*step for t in range(1,step_num+1)], [np.count_nonzero(np.array(timebin))/(nnum-type_length) for timebin in type0_by_timebin], color=c_0)
+	if recognize_inh:
+		type0_by_timebin = [[0]*nnum for t in range(step_num)]
+		for t in range(step_num):
+			for sender in np.unique(np.array(spike_file['senders'])[times_by_timebin[t]]):
+				type1_by_timebin[t][sender-1] = type_list[sender-1]
+				type0_by_timebin[t][sender-1] = not type_list[sender-1]
+		ax_percentage.step([t*step for t in range(1,step_num+1)], [np.count_nonzero(np.array(timebin))/type_length for timebin in type1_by_timebin], color=c_1)
+		ax_percentage.step([t*step for t in range(1,step_num+1)], [np.count_nonzero(np.array(timebin))/(nnum-type_length) for timebin in type0_by_timebin], color=c_0)
+	else:
+		for t in range(step_num):
+			for sender in np.unique(np.array(spike_file['senders'])[times_by_timebin[t]]):
+				type1_by_timebin[t][sender-1] = 1
+		ax_percentage.step([t*step for t in range(1,step_num+1)], [np.count_nonzero(np.array(timebin))/nnum for timebin in type1_by_timebin], color=c_exc)
+
 	ax_percentage.set_ylabel('percentage spiking')
 
 	# Format and save figure
@@ -207,8 +217,8 @@ if __name__=="__main__":
 	##     t1: t1 paramater for transmission response
 	##     t2: t2 paramater for transmission response
 	nnum = 21663
-	spikes = 'droso_1593525801'
-	time = 100
+	spikes = 'droso_1593852490'
+	time = 500
 	# nnum = 31346
 	# spikes = 'bbmc2_n30_bettifocus_1592051748'
 	# time = 250
@@ -216,9 +226,9 @@ if __name__=="__main__":
 	flagser='/home/jason/Documents/flagsers/flagser-mod/flagser'
 	t1 = 5
 	t2 = 10
-	#make_spikeplot(spikes,time,'bbmc2')
-	make_spikeplot(spikes,time,step=5,circuit='drosophila')
-	make_tr_fromspikes(spikes,time,5,10)
-	flag_tr(spikes)
-	make_betticurves(spikes,{'start':10, 'end':95, 'step':5})
-	combine_spikes_bettis(spikes)
+	#make_spikeplot(spikes,time,circuit='bbmc2',recognize_inh=True)
+	make_spikeplot(spikes,time,step=5,circuit='drosophila',recognize_inh=False)
+	#make_tr_fromspikes(spikes,time,5,10)
+	#flag_tr(spikes)
+	#make_betticurves(spikes,{'start':10, 'end':95, 'step':5})
+	#combine_spikes_bettis(spikes)
