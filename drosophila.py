@@ -1,4 +1,4 @@
-# Based on BlueBrain neocortical microcircuit
+# Based on Janelia's drosophila connectome model
 # http://neuprint.janelia.org/
 # https://www.biorxiv.org/content/10.1101/2020.05.18.102061v1
 # Neuro-Topology Group, Institute of Mathematics, University of Aberdeen
@@ -13,7 +13,7 @@ from datetime import datetime                                               # Fo
 from scipy.sparse import load_npz                                           # For reading of files
 import numpy as np                                                          # For reading of files
 import random
-import tqdm
+import tqdm                                                                 # For visualizing progress bar
 
 # Auxiliary: Formatted printer for messages
 def ntnstatus(message):
@@ -58,20 +58,19 @@ noise_strength = 2.5
 # Adjust weights
 adj = adj*exc_weight                                                        # Adjust excitatory weight by exc_weight factor
 for i in inh:
-	adj[i[0]][i[1]] = adj[i[0]][i[1]]*inh_weight                            # Set inhibitory weights to negative
-
+	adj[i[0]][i[1]] = adj[i[0]][i[1]]*inh_weight/exc_weight                 # Set inhibitory weights to negative
 
 # Create the circuit
 ntnstatus('Constructing circuit')
 network = nest.Create('izhikevich', n=nnum, params={'a':1.1})
-weights = {n:np.unique(adj[n],return_counts=True) for n in range(nnum)}
-targets = {n:{w:np.where(adj[n] == w)[0] for w in weights[n][0]} for n in range(nnum)}
+weights = {n:np.unique(adj[n]) for n in range(nnum)}
+targets = {n:{w:np.where(adj[n] == w)[0] for w in weights[n] if w!=0} for n in range(nnum)}
 for source in tqdm.tqdm(targets.keys()):
 	for weight in targets[source].keys():
 		nest.Connect((source+1,), [target+1 for target in targets[source][weight]], conn_spec='all_to_all', syn_spec={
 			'model': 'bernoulli_synapse',
 			'weight': weight,
-			'delay': delay if weight>0 else 0,                               # Delay is 0 if connection is inhibitory
+			'delay': delay,# if weight>0 else 0,                               # Delay is 0 if connection is inhibitory
 			'p_transmit': 0.1})
 
 # Load stimulus and connect it to neurons
