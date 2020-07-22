@@ -54,11 +54,8 @@ for n in inh_syn_integer:
 	inh_syn_binary[n] = 1
 
 # Declare parameters
-exc_weight = 0.25                                                           # Weight (as a factor) of excitatory synapses
-inh_weight = -5.0                                                           # Weight (as a factor) of inhibitory synapses
-exc_transmit = 0.1                                                          # Probability of transmission for an excitatory synapse
-inh_transmit = 0.5                                                          # Probability of transmission for an inhibitory synapse
-delay = 0.1                                                                 # Delay between neurons (used as a multiplying factor)
+exc = {'weight':0.3, 'delay':1.0, 'transmit':0.13}                         # Excitatory synapse parameters
+inh = {'weight':-1.5, 'delay':0.1, 'transmit':0.13}                         # Inhibitory synapse parameters
 exp_length = args.time                                                      # Length of experiment, in milliseconds
 stim_strength = 1000
 noise_strength = 2.5
@@ -69,21 +66,22 @@ network = nest.Create('izhikevich', n=nnum, params={'a':1.1})
 synapse_index = 0
 for source in tqdm.tqdm(range(nnum)):
 	targets = adj[source]
-	neighbours = np.nonzero(targets)[0]
+	out_neighbours = np.nonzero(targets)[0]
 	out_degree = sum(targets)
-	syn_integer = np.array(reduce((lambda x,y: x+y),[[target+1]*targets[target] for target in neighbours],[]))
-	syn_binary = inh_syn_binary[synapse_index:synapse_index+out_degree]
-	nest.Connect((source+1,), list(syn_integer[np.where(syn_binary == 0)[0]]), conn_spec='all_to_all', syn_spec={
-		'model': 'bernoulli_synapse',
-		'weight': exc_weight,
-		'delay': delay,
-		'p_transmit': exc_transmit})
-	nest.Connect((source+1,), list(syn_integer[np.where(syn_binary == 1)[0]]), conn_spec='all_to_all', syn_spec={
-		'model': 'bernoulli_synapse',
-		'weight': inh_weight,
-		'delay': delay,
-		'p_transmit': inh_transmit})
-	synapse_index += out_degree
+	if out_degree:
+		syn_integer = np.concatenate([np.array([target+1]*targets[target]) for target in out_neighbours]).ravel()
+		syn_binary = inh_syn_binary[synapse_index:synapse_index+out_degree]
+		nest.Connect((source+1,), syn_integer[np.where(syn_binary == 0)[0]].tolist(), conn_spec='all_to_all', syn_spec={
+			'model': 'bernoulli_synapse',
+			'weight': exc['weight'],
+			'delay': exc['delay'],
+			'p_transmit': exc['transmit']})
+		nest.Connect((source+1,), syn_integer[np.where(syn_binary == 1)[0]].tolist(), conn_spec='all_to_all', syn_spec={
+			'model': 'bernoulli_synapse',
+			'weight': inh['weight'],
+			'delay': inh['delay'],
+			'p_transmit': inh['transmit']})
+		synapse_index += out_degree
 
 # Load stimulus and connect it to neurons
 ntnstatus('Creating thalamic nerves for stimulus')
