@@ -14,6 +14,7 @@ from scipy.sparse import load_npz                                           # Fo
 import numpy as np                                                          # For reading of files
 import random
 import tqdm                                                                 # For visualizing progress bar
+from functools import reduce
 
 # Auxiliary: Formatted printer for messages
 def ntnstatus(message):
@@ -38,40 +39,51 @@ simulation_id = datetime.now().strftime("%s")                               # Cu
 # Load circuit info
 ntnstatus('Loading drosophila structural information')
 nnum = 21663                                                                                # Number of neurons in circuit
+snum = 13603750                                                                             # Number of synapses in circuit, computed by sum(sum(adj))
 adj = load_npz(root+'structure/weighted_adjmat_drosophila.npz').toarray().astype('int64')   # Adjacency matrix
 
-# Select which connections to be inhibitory                                                                # Uncomment next four lines to select new inhibitory connections
-# inh_prop = 0.1                                                                                           # Proportion of connections which are inhibitory
+# Inhibitory connections                                                                                   # Uncomment next four lines to select new inhibitory connections
+inh_prop = 0.1                                                                                             # Proportion of connections which are inhibitory
 # edges=np.where(adj)                                                                                      # Get all connections
 # inh=[(edges[0][i],edges[1][i]) for i in random.sample(range(len(edges[0])),int(len(edges[0])*inh_prop))] # randomly select some to be inhibitory
 # np.save(root+'structure/drosophila_inhibitory.npy',inh)
-inh = np.load(root+'structure/drosophila_inhibitory.npy')                   # list of pairs (X,Y) indicating X->Y is an inhibitory edge
+# inh = np.load(root+'structure/drosophila_inhibitory.npy')                                                # list of pairs (X,Y) indicating X->Y is an inhibitory edge
+inh_syn_integer = np.random.choice(range(snum),size=int(inh_prop*snum),replace=False)                      # Randomly select synapses to be inhibitory
+inh_syn_binary = np.zeros(snum,dtype='int64')
+for n in inh_syn_integer:
+	inh_syn_binary[n] = 1
 
 # Declare parameters
 exc_weight = 0.25                                                           # Weight (as a factor) of excitatory synapses
 inh_weight = -5.0                                                           # Weight (as a factor) of inhibitory synapses
+exc_transmit = 0.1                                                          # Probability of transmission for an excitatory synapse
+inh_transmit = 0.5                                                          # Probability of transmission for an inhibitory synapse
 delay = 0.1                                                                 # Delay between neurons (used as a multiplying factor)
 exp_length = args.time                                                      # Length of experiment, in milliseconds
 stim_strength = 1000
 noise_strength = 2.5
 
-# Adjust weights
-adj = adj*exc_weight                                                        # Adjust excitatory weight by exc_weight factor
-for i in inh:
-	adj[i[0]][i[1]] = adj[i[0]][i[1]]*inh_weight/exc_weight                 # Set inhibitory weights to negative
-
 # Create the circuit
 ntnstatus('Constructing circuit')
 network = nest.Create('izhikevich', n=nnum, params={'a':1.1})
-weights = {n:np.unique(adj[n]) for n in range(nnum)}
-targets = {n:{w:np.where(adj[n] == w)[0] for w in weights[n] if w!=0} for n in range(nnum)}
-for source in tqdm.tqdm(targets.keys()):
-	for weight in targets[source].keys():
-		nest.Connect((source+1,), [target+1 for target in targets[source][weight]], conn_spec='all_to_all', syn_spec={
-			'model': 'bernoulli_synapse',
-			'weight': weight,
-			'delay': delay,# if weight>0 else 0,                               # Delay is 0 if connection is inhibitory
-			'p_transmit': 0.1})
+synapse_index = 0
+for source in tqdm.tqdm(range(nnum)):
+	targets = adj[source]
+	neighbours = np.nonzero(targets)[0]
+	out_degree = sum(targets)
+	syn_integer = np.array(reduce((lambda x,y: x+y),[[target+1]*targets[target] for target in neighbours],[]))
+	syn_binary = inh_syn_binary[synapse_index:synapse_index+out_degree]
+	nest.Connect((source+1,), list(syn_integer[np.where(syn_binary == 0)[0]]), conn_spec='all_to_all', syn_spec={
+		'model': 'bernoulli_synapse',
+		'weight': exc_weight,
+		'delay': delay,
+		'p_transmit': exc_transmit})
+	nest.Connect((source+1,), list(syn_integer[np.where(syn_binary == 1)[0]]), conn_spec='all_to_all', syn_spec={
+		'model': 'bernoulli_synapse',
+		'weight': inh_weight,
+		'delay': delay,
+		'p_transmit': inh_transmit})
+	synapse_index += out_degree
 
 # Load stimulus and connect it to neurons
 ntnstatus('Creating thalamic nerves for stimulus')
