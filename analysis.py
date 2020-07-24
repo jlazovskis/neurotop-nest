@@ -21,11 +21,11 @@ def make_spikeplot(name,length,step=5,circuit='bbmc2',recognize_inh=True):
 	# Set styles and lists
 	c_exc = (0.8353, 0.0, 0.1961)
 	c_inh = (0.0, 0.1176, 0.3843)
-	spike_file = np.load(name+'.npy',allow_pickle=True)[True][0]
+	spike_file = np.load(circuit+'/simulations/'+name+'.npy',allow_pickle=True)[True][0]
 	if recognize_inh:
 		c_1 = c_exc if circuit == 'bbmc2' else c_inh
 		c_0 = c_inh if circuit == 'bbmc2' else c_exc
-		type_list = np.load('structure/bbmc2_excitatory.npy') if circuit == 'bbmc2' else np.load('structure/drosophila_inhibitory.npy')
+		type_list = np.load(circuit+'/structure/bbmc2_excitatory.npy') if circuit == 'bbmc2' else np.load(circuit+'/structure/drosophila_inhibitory.npy')
 		type_length = len(np.nonzero(type_list)[0])
 		color_list = [c_1 if type_list[sender-1] else c_0 for sender in spike_file['senders']]
 	else:
@@ -63,13 +63,13 @@ def make_spikeplot(name,length,step=5,circuit='bbmc2',recognize_inh=True):
 
 	# Format and save figure
 	plt.tight_layout()
-	plt.savefig(name+'.png', dpi=200)
+	plt.savefig(circuit+'/simulations/'+name+'.png', dpi=200)
 
 
 # Transimssion response matrices from spike file
 def make_tr_fromspikes(name, length, t1, t2):
-	s = np.load(name+'.npy',allow_pickle=True)[True][0]
-	adj = scipy.sparse.load_npz('structure/adjmat_mc2.npz').toarray()
+	s = np.load('./bbmc2/simulations/'+name+'.npy',allow_pickle=True)[True][0]
+	adj = scipy.sparse.load_npz('./bbmc2/structure/adjmat_mc2.npz').toarray()
 	active_edges = []
 	for step in range(int(length//t1)):
 		cur_edges = []
@@ -86,7 +86,7 @@ def make_tr_fromspikes(name, length, t1, t2):
 
 # Run flagser on transmission response edge lists
 def flag_tr(name):
-	tr = np.load(name+'.npz')
+	tr = np.load('./bbmc2/simulations/'+name+'.npz')
 	bettis = []
 	for step in range(len(tr)):
 		cur_bettis = []
@@ -113,7 +113,7 @@ def flag_tr(name):
 # Make betti curves from flagged files
 def make_betticurves(name,params={'start':0, 'end':250, 'step':5}):
 	# Load file and make dim lists
-	bettis_bystep = np.load(name+'_TR.npy',allow_pickle=True)
+	bettis_bystep = np.load('./bbmc2/simulations/'+name+'_TR.npy',allow_pickle=True)
 	#stepnum = len(bettis_bystep)
 	stepfirst = params['start']//params['step']
 	steplast = params['end']//params['step']
@@ -216,9 +216,9 @@ if __name__=="__main__":
 	##   time: length of experiment
 	##     t1: t1 paramater for transmission response
 	##     t2: t2 paramater for transmission response
-	nnum = 21663
-	spikes = 'droso_1593852490'
-	time = 500
+	nnum = 25288
+	spikes = 'droso_1595615872'
+	time = 300
 	# nnum = 31346
 	# spikes = 'bbmc2_n30_bettifocus_1592051748'
 	# time = 250
