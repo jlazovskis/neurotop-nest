@@ -24,7 +24,14 @@ import pickle as pk
 parser = argparse.ArgumentParser(
 	description='Drosophila reconstruction and validations',
 	usage='python drosophila.py')
-parser.add_argument('--time', type=int, default=100, help='Length, in milliseconds, of experiment. Must be an integer. Default is 100.')
+parser.add_argument('--time', type=int, default=300, help='Length, in milliseconds, of experiment.')
+parser.add_argument('--noise_strength', type=float, default=3, help='Strength of noise.')
+
+parser.add_argument('--stimulus', type=str, default='2-3-butanedione', help='Stimulus to use. Default is 2-3-butanedione which is the strongest.') # Avaible odors can be obtained by: pickle.load(open(root+'stimuli/data/odor2receptor.pkl','rb')).keys()
+parser.add_argument('--stimulus_strength', type=int, default=50000, help='Strength of stimulus.')
+parser.add_argument('--stimulus_start', type=int, default=100, help='Start time of stimulus.')
+parser.add_argument('--stimulus_length', type=int, default=5, help='Length of stimulus.')
+
 parser.add_argument('--disable_build', action='store_true', help='Stops the adjacency matrix being built and loads "structure/drosophila_weighted.npy".')
 parser.add_argument('--disable_design', action='store_true', help='Stops the stimulus being designed and loads "stimuli/drosophila_olfact.npy".')
 parser.add_argument('--disable_simulate', action='store_true', help='Stops the simulation being run.')
@@ -40,11 +47,11 @@ inh_prop = 0.1                                                                  
 exc = {'weight':0.3, 'delay':1.0, 'transmit':0.13}                              # Excitatory synapse parameters
 inh = {'weight':-1.5, 'delay':0.1, 'transmit':0.13}                             # Inhibitory synapse parameters
 exp_length = args.time                                                          # Length of experiment, in milliseconds
-stim_strength = 50000
-noise_strength = 2.5
-stim_length = 5                                                                 # Length stimulus is applied for, in milliseconds
-stim_start = 100                                                                # Time at which stimulus is introduced, in milliseconds
-stimulus_odor = 'water'                                                         # Odor to simuluate, possibilities can be obtained by: pickle.load(open(root+'stimuli/data/odor2receptor.pkl','rb')).keys()
+stim_strength = args.stimulus_strength
+noise_strength = args.noise_strength
+stim_length = args.stimulus_length                                              # Length stimulus is applied for, in milliseconds
+stim_start = args.stimulus_start                                                # Time at which stimulus is introduced, in milliseconds
+stimulus_odor = args.stimulus
 
 #******************************************************************************#
 # Auxiliary: Formatted printer for messages
@@ -77,6 +84,7 @@ def build_matrix(results):
 #******************************************************************************#
 #Design the stimulus to  be inserted into the drosophila circuit
 def design_stimuli(results):
+    ntnstatus('Creating stimulus')
     # Get olfactory receptor neurons
     ORN_types = [i for i in set(results['type']) if not i==None and i[:3]=='ORN'] # Get list of all Olfactory Receptor Neurons (ORN) types
     ORNs = results[results['type'].isin(ORN_types)]                               # Get dataframe of all ORNs
@@ -99,7 +107,7 @@ def design_stimuli(results):
             if float(i[1]) > 0:                                                 # Some of the strengths are negative, not sure what that means, so for now ignore
                 stimulus.append((fibre_name['ORN_'+j],stim_start,stim_start+stim_length,float(i[1])))
 
-    np.save(root+'/stimuli/drosophila_olfact.npy',[fibres,stimulus])
+    np.save(root+'/stimuli/drosophila_'+stimulus_odor+'.npy',[fibres,stimulus])
 
 #******************************************************************************#
 #Build the NEST implementation of the drosophila circuit, and run a simulation
@@ -159,9 +167,9 @@ def run_nest_simulation():
     	nest.Connect((n,),spikedetector)
 
     #Create kickstart stimulus
-    kickstart = nest.Create('poisson_generator',params={'start': 1.0, 'stop': 2.0, 'rate': float(2*stim_strength)})
-    for n in range(1,nnum+1):
-    	nest.Connect(kickstart,(n,))
+    # kickstart = nest.Create('poisson_generator',params={'start': 1.0, 'stop': 2.0, 'rate': float(2*stim_strength)})
+    # for n in range(1,nnum+1):
+    # 	nest.Connect(kickstart,(n,))
 
     #Connect stimulus to circuit
     ntnstatus('Creating thalamic nerves for stimulus')
@@ -182,8 +190,8 @@ def run_nest_simulation():
     nest.Simulate(float(exp_length))
     #v = nest.GetStatus(voltmeter)[0]['events']['V_m']     # volts
     s = nest.GetStatus(spikedetector)[0]['events']        # spikes
-    np.save(root+'/simulations/droso_'+simulation_id+'.npy', np.array(s))
-    ntnsubstatus("Simulation id: "+simulation_id)
+    np.save(root+'/simulations/droso_'+stimulus_odor+'_'+simulation_id+'.npy', np.array(s))
+    ntnsubstatus("Simulation name: droso_"+stimulus_odor+"_"+simulation_id)
 
 
 

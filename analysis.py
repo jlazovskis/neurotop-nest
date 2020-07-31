@@ -14,6 +14,22 @@ import scipy.sparse                                                         # Fo
 import subprocess                                                           # For counting simplices and running flagser
 from itertools import combinations                                          # For accessing specific plots
 import os                                                                   # For deleting files
+import argparse                                                             # For options
+
+# Read arguments
+parser = argparse.ArgumentParser(
+	description='Simplified Blue Brain Project reconstructions and validations',
+	usage='python analysis.py')
+parser.add_argument('--spikes', type=str, help='Simulation name.')
+parser.add_argument('--time', type=int, default=300, help='Length, in milliseconds, of experiment. Must be an integer. Default is 300.')
+parser.add_argument('--circuit', type=str, default='drosophila', help='Either drosophila(default) or bbmc2.')
+parser.add_argument('--skip_spikeplot', action='store_true', help='If included, creates raster plot of spikes.')
+parser.add_argument('--TR', action='store_true', help='If included, creates transmission response graphs.')
+parser.add_argument('--Betti_curves', action='store_true', help='If included, creates plot of Betti numbers.')
+parser.add_argument('--flagser', type=str, default='/uoa/scratch/shared/mathematics/neurotopology/flagser', help='The address of flagser, needed if TR is used. Default is address on Maxwell.')
+parser.add_argument('--t1', type=int, default=5, help='t1 paramater for transmission response. Default is 5ms.')
+parser.add_argument('--t2', type=int, default=10, help='t2 paramater for transmission response. Default is 10ms.')
+args = parser.parse_args()
 
 # Output spike only plot
 def make_spikeplot(name,length,step=5,circuit='bbmc2',recognize_inh=True):
@@ -205,30 +221,19 @@ def make_loc_plot(volt_file,number_of_steps):
 #		plt.text(1,0, 'Stimulus '+str(stim), fontsize=12, ha='center', va='top', transform=axA.transAxes)
 	plt.savefig('viz_{:04d}.png'.format(t),dpi=120)
 
-
 ##
 ## Run the desired commands
 ##
-
 if __name__=="__main__":
-	##    num: number of neurons in circuit
-	## spikes: name of output spike file
-	##   time: length of experiment
-	##     t1: t1 paramater for transmission response
-	##     t2: t2 paramater for transmission response
-	nnum = 25288
-	spikes = 'droso_1595615872'
-	time = 300
-	# nnum = 31346
-	# spikes = 'bbmc2_n30_bettifocus_1592051748'
-	# time = 250
-	#flagser='/home/jlv/flagser/flagser'
-	flagser='/home/jason/Documents/flagsers/flagser-mod/flagser'
-	t1 = 5
-	t2 = 10
-	#make_spikeplot(spikes,time,circuit='bbmc2',recognize_inh=True)
-	make_spikeplot(spikes,time,step=5,circuit='drosophila',recognize_inh=False)
-	#make_tr_fromspikes(spikes,time,5,10)
-	#flag_tr(spikes)
-	#make_betticurves(spikes,{'start':10, 'end':95, 'step':5})
-	#combine_spikes_bettis(spikes)
+	nnum = {'bbmc2': 31346, 'drosophila': 25288}[args.circuit]
+
+	if not args.skip_spikeplot:
+	    make_spikeplot(args.spikes,args.time,step=5,circuit=args.circuit,recognize_inh=(args.circuit=='bbmc2'))
+
+	if args.TR:
+	    make_tr_fromspikes(args.spikes,time,args.t1,args.t2)
+	    flag_tr(args.spikes)
+
+	if args.Betti_curves:
+	    make_betticurves(args.spikes,{'start':10, 'end':95, 'step':5})
+	    combine_spikes_bettis(args.spikes)
