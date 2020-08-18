@@ -29,6 +29,8 @@ parser.add_argument('--Betti_curves', action='store_true', help='If included, cr
 parser.add_argument('--flagser', type=str, default='/uoa/scratch/shared/mathematics/neurotopology/flagser', help='The address of flagser, needed if TR is used. Default is address on Maxwell.')
 parser.add_argument('--t1', type=int, default=5, help='t1 paramater for transmission response. Default is 5ms.')
 parser.add_argument('--t2', type=int, default=10, help='t2 paramater for transmission response. Default is 10ms.')
+parser.add_argument('--TR_start', type=int, default=0, help='start time for transmission response. Default is 0ms.')
+parser.add_argument('--TR_end', type=int, default=300, help='end time for transmission response. Default is 300ms.')
 args = parser.parse_args()
 
 # Output spike only plot
@@ -84,25 +86,25 @@ def make_spikeplot(name,length,step=5,circuit='bbmc2',recognize_inh=True):
 
 # Transimssion response matrices from spike file
 def make_tr_fromspikes(name, length, t1, t2):
-	s = np.load('./bbmc2/simulations/'+name+'.npy',allow_pickle=True)[True][0]
+	s = np.load(args.circuit+'/simulations/'+name+'.npy',allow_pickle=True)[True][0]
 	adj = scipy.sparse.load_npz('./bbmc2/structure/adjmat_mc2.npz').toarray()
 	active_edges = []
-	for step in range(int(length//t1)):
+	for step in range(int((args.TR_end-args.TR_start)//t1)):
 		cur_edges = []
-		for spike_index in np.where(abs(s['times']-(step+.5)*t1) < t1/2)[0]:
+		for spike_index in np.where(abs(s['times']-args.TR_start-(step+.5)*t1) < t1/2)[0]:
 			spike_time = s['times'][spike_index]
 			spiker = s['senders'][spike_index]-1
 			for alsospiked in np.intersect1d(np.nonzero(adj[spiker])[0], np.array([n-1 for n in s['senders'][np.where(abs(s['times']-spike_time-t2/2) < t2/2)[0]]])):
 				cur_edges.append(tuple({spiker,alsospiked}))
 		active_edges.append(list(set(cur_edges)))
-		print('Time ['+str(step*t1)+','+str((step+1)*t1)+'] in ['+str(step*t1)+','+str(step*t1+t2)+'] has '+str(len(cur_edges))+' active edges', flush=True)
+		print('Time ['+str(args.TR_start+step*t1)+','+str(args.TR_start+(step+1)*t1)+'] in ['+str(args.TR_start+step*t1)+','+str(args.TR_start+step*t1+t2)+'] has '+str(len(cur_edges))+' active edges', flush=True)
 	print('Compressing edge lists into npz file', flush=True)
-	np.savez_compressed(name+'.npz', *active_edges)
+	np.savez_compressed(args.circuit+'/simulations/'+name+'.npz', *active_edges)
 
 
 # Run flagser on transmission response edge lists
 def flag_tr(name):
-	tr = np.load('./bbmc2/simulations/'+name+'.npz')
+	tr = np.load(args.circuit+'/simulations/'+name+'.npz')
 	bettis = []
 	for step in range(len(tr)):
 		cur_bettis = []
@@ -117,19 +119,19 @@ def flag_tr(name):
 		# Run flagser and read output file
 		if os.path.exists('step'+str(step)+'.out'):
 			os.remove('step'+str(step)+'.out')
-		cmd = subprocess.Popen([flagser, '--out', 'step'+str(step)+'.out', 'step'+str(step)+'.in'], stdout=subprocess.DEVNULL); cmd.wait()
+		cmd = subprocess.Popen([args.flagser, '--out', 'step'+str(step)+'.out', 'step'+str(step)+'.in'], stdout=subprocess.DEVNULL); cmd.wait()
 		g = open('step'+str(step)+'.out','r'); L = g.readlines(); g.close()
 		print('Step '+str(step)+': '+str(list(map(lambda x: int(x), L[1][:-1].split(' ')[1:]))),flush=True)
 		bettis.append(np.array(list(map(lambda x: int(x), L[1][:-1].split(' ')[1:]))))
 		# Remove files
 		subprocess.Popen(['rm', 'step'+str(step)+'.in'], stdout=subprocess.DEVNULL)
 		subprocess.Popen(['rm', 'step'+str(step)+'.out'], stdout=subprocess.DEVNULL)
-	np.save(name+'_TR.npy',np.array(bettis))
+	np.save(args.circuit+'/simulations/'+name+'_TR.npy',np.array(bettis,dtype=object))
 
 # Make betti curves from flagged files
 def make_betticurves(name,params={'start':0, 'end':250, 'step':5}):
 	# Load file and make dim lists
-	bettis_bystep = np.load('./bbmc2/simulations/'+name+'_TR.npy',allow_pickle=True)
+	bettis_bystep = np.load(args.circuit+'/simulations/'+name+'_TR.npy',allow_pickle=True)
 	#stepnum = len(bettis_bystep)
 	stepfirst = params['start']//params['step']
 	steplast = params['end']//params['step']
@@ -173,20 +175,21 @@ def make_betticurves(name,params={'start':0, 'end':250, 'step':5}):
 
 	# Export
 	fig.subplots_adjust(wspace=0.3, hspace=0.45, right=.96, left=0.02, top=0.90, bottom=0.08)
-	plt.savefig(name+'_betticurves.png',dpi=200)
+	plt.savefig(args.circuit+'/simulations/'+name+'_betticurves.png',dpi=200)
 
 # Combine two output pictures
 def combine_spikes_bettis(name):
 	widths = []
 	for suffix in ['.png','_betticurves.png']:
-		cmd = subprocess.Popen(['file',name+suffix],stdout=subprocess.PIPE,stderr=subprocess.DEVNULL)
+		cmd = subprocess.Popen(['file',args.circuit+'/simulations/'+name+suffix],stdout=subprocess.PIPE,stderr=subprocess.DEVNULL)
 		out = cmd.communicate()[0].decode('utf-8').split('\n')[:-1]
+		print(out)
 		widths.append(int(out[0].split(' ')[4]))
-	cmd = subprocess.Popen(['convert',name+'.png','-resize',str(min(widths)),'top.png'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL); cmd.wait()
-	cmd = subprocess.Popen(['convert',name+'_betticurves.png','-resize',str(min(widths)),'bottom.png'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL); cmd.wait()
-	cmd = subprocess.Popen(['convert','top.png','bottom.png','-append',name+'_spikes_bettis.png'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL); cmd.wait()
-	subprocess.Popen(['rm','top.png'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL);
-	subprocess.Popen(['rm','bottom.png'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL);
+	cmd = subprocess.Popen(['convert',args.circuit+'/simulations/'+name+'.png','-resize',str(min(widths)),args.circuit+'/simulations/top.png'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL); cmd.wait()
+	cmd = subprocess.Popen(['convert',args.circuit+'/simulations/'+name+'_betticurves.png','-resize',str(min(widths)),args.circuit+'/simulations/bottom.png'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL); cmd.wait()
+	cmd = subprocess.Popen(['convert',args.circuit+'/simulations/top.png',args.circuit+'/simulations/bottom.png','-append',args.circuit+'/simulations/'+name+'_spikes_bettis.png'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL); cmd.wait()
+	subprocess.Popen(['rm',args.circuit+'/simulations/top.png'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL);
+	subprocess.Popen(['rm',args.circuit+'/simulations/bottom.png'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL);
 
 
 # Make visual plot of locations of neurons spiking
@@ -231,7 +234,7 @@ if __name__=="__main__":
 	    make_spikeplot(args.spikes,args.time,step=5,circuit=args.circuit,recognize_inh=(args.circuit=='bbmc2'))
 
 	if args.TR:
-	    make_tr_fromspikes(args.spikes,time,args.t1,args.t2)
+	    make_tr_fromspikes(args.spikes,args.time,args.t1,args.t2)
 	    flag_tr(args.spikes)
 
 	if args.Betti_curves:
