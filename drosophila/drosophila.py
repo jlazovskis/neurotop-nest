@@ -107,7 +107,7 @@ def design_stimuli(results):
             if float(i[1]) > 0:                                                 # Some of the strengths are negative, not sure what that means, so for now ignore
                 stimulus.append((fibre_name['ORN_'+j],stim_start,stim_start+stim_length,float(i[1])))
 
-    np.save(root+'/stimuli/drosophila_'+stimulus_odor+'.npy',[fibres,stimulus])
+    np.save(root+'/stimuli/drosophila_'+stimulus_odor+'.npy',np.array([fibres,stimulus],dtype=object))
 
 #******************************************************************************#
 #Build the NEST implementation of the drosophila circuit, and run a simulation
@@ -173,7 +173,7 @@ def run_nest_simulation():
 
     #Connect stimulus to circuit
     ntnstatus('Creating thalamic nerves for stimulus')
-    fibres, firing_pattern = np.load(root+'stimuli/drosophila_olfact.npy', allow_pickle=True)
+    fibres, firing_pattern = np.load(root+'stimuli/drosophila_'+stimulus_odor+'.npy', allow_pickle=True)
     stimuli = nest.Create('poisson_generator', n=len(fibres))
     for stimulus in range(len(fibres)):
     	for j in fibres[stimulus]:
@@ -190,7 +190,7 @@ def run_nest_simulation():
     nest.Simulate(float(exp_length))
     #v = nest.GetStatus(voltmeter)[0]['events']['V_m']     # volts
     s = nest.GetStatus(spikedetector)[0]['events']        # spikes
-    np.save(root+'/simulations/droso_'+stimulus_odor+'_'+simulation_id+'.npy', np.array(s))
+    np.save(root+'/simulations/droso_'+stimulus_odor+'_'+simulation_id+'.npy', np.array(s,dtype=object))
     ntnsubstatus("Simulation name: droso_"+stimulus_odor+"_"+simulation_id)
 
 
