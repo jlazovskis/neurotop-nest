@@ -23,7 +23,7 @@ import operator
 
 #******************************************************************************#
 #config
-repetitions = 1
+repetitions = 10
 num_stimuli = 5
 time_gap = 200
 root='/home/jason/Documents/neurotop-nest/drosophila/'                                                                       # Current working directory
@@ -33,9 +33,11 @@ parallel_threads = 8                                                            
 inh_prop = 0.1                                                                  # Proportion of connections which are inhibitory
 exc = {'weight':0.3, 'delay':1.0, 'transmit':0.13}                              # Excitatory synapse parameters
 inh = {'weight':-1.5, 'delay':0.1, 'transmit':0.13}                             # Inhibitory synapse parameters
-stim_strength = 10000
-noise_strength = 3
-stim_length = 10                                              # Length stimulus is applied for, in milliseconds
+stim_strength = 500000
+noise_strength = 1
+stim_length = 10                                             # Length stimulus is applied for, in milliseconds
+simulation_id = datetime.now().strftime("%s")
+do_kickstart = False
 
 def ntnstatus(message):
 	print("\n"+datetime.now().strftime("%b %d %H:%M:%S")+" neurotop-nest: "+message, flush=True)
@@ -69,17 +71,18 @@ glomerulus = {i[0]:[j for j in i[1:] if not j==''] for i in csv.reader(open(root
 odor_recept = pk.load(open(root+'stimuli/data/odor2receptor.pkl','rb'))       # Maps an odor to a list where each entry is a pair (G,S), with G a glomerulus and S a strength value between -1 and 1
 
 #Select the largest num_stimuli odors to be used
-odor_size = pk.load(open('stimuli/data/odor_size.pkl','rb'))
+odor_size = pk.load(open(root+'stimuli/data/odor_size.pkl','rb'))
 the_stimuli = [k for k, v in sorted(odor_size.items(), key=lambda item: item[1])[-num_stimuli:]]
 stim_order = [i for i in range(num_stimuli) for j in range(repetitions)]
 random.shuffle(stim_order)
 
 firing_pattern = []
 for k in range(len(stim_order)):
+    firing_pattern.append([])
     for i in odor_recept[the_stimuli[stim_order[k]]]:
         for j in glomerulus[i[0]]:
             if float(i[1]) > 0:
-                firing_pattern.append((fibre_name['ORN_'+j],time_gap*k,time_gap*k+stim_length,float(i[1])))
+                firing_pattern[-1].append((fibre_name['ORN_'+j],time_gap*(k+1),time_gap*(k+1)+stim_length,float(i[1])))
 
 ntnstatus('Loading drosophila structural information')                      # Number of synapses in circuit
 adj = np.load(root+'structure/drosophila_weighted.npy',allow_pickle=True).item().toarray() # Adjacency matrix
@@ -91,14 +94,16 @@ inh_syn_binary = np.zeros(snum,dtype='int64')
 for n in inh_syn_integer:
 	inh_syn_binary[n] = 1
 
-np.save(root+'/stimuli/drosophila_long.npy',np.array([fibres,firing_pattern,inh_syn_binary],dtype=object))
+np.save(root+'/stimuli/droso_long_'+simulation_id+'.npy',np.array([fibres,firing_pattern,inh_syn_binary,stim_order,the_stimuli],dtype=object))
 
 
 ################################################################################
 #Run Simulation
 
 nest.ResetKernel()                                                          # Reset nest
-nest.SetKernelStatus({"local_num_threads": parallel_threads})               # Run on many threads                                                     # Number of synapses in circuit
+nest.SetKernelStatus({"local_num_threads": parallel_threads,
+                      "overwrite_files": True,
+                      "data_path": root+'simulations/'})                # Run on many threads
 
 ntnstatus('Constructing circuit')
 network = nest.Create('izhikevich', n=nnum, params={'a':1.1})
@@ -129,22 +134,20 @@ nest.Connect(weak_noise, list(range(1,nnum+1)), conn_spec='all_to_all')
 
 # Connect voltage and spike readers
 ntnstatus('Adding voltage and spike readers')
-voltmeter = nest.Create('voltmeter', params={
-	 'label': 'volts',
-	 'withtime': True,
-	 'withgid': True,
-	 'interval': 0.1})
+#voltmeter = nest.Create('voltmeter', params={
+#	 'label': 'volts',
+#	 'withtime': True,
+#	 'withgid': True,
+#	 'interval': 0.1})
 spikedetector = nest.Create('spike_detector', params={
+    # "to_file": True,
+    # "file_extension": simulation_id+".spikes",
 	'label': 'spikes',
-	'withgid': True})
+	'withgid': True
+})
 for n in range(1,nnum+1):
-	nest.Connect(voltmeter,(n,))
+#	nest.Connect(voltmeter,(n,))
 	nest.Connect((n,),spikedetector)
-
-#Create kickstart stimulus
-# kickstart = nest.Create('poisson_generator',params={'start': 1.0, 'stop': 2.0, 'rate': float(2*stim_strength)})
-# for n in range(1,nnum+1):
-# 	nest.Connect(kickstart,(n,))
 
 #Connect stimulus to circuit
 ntnstatus('Creating thalamic nerves for stimulus')
@@ -153,18 +156,32 @@ stimuli = nest.Create('poisson_generator', n=len(fibres))
 for stimulus in range(len(fibres)):
 	for j in fibres[stimulus]:
 		nest.Connect((stimuli[stimulus],),(j+1,))
-for fire in firing_pattern:
-	nest.SetStatus((stimuli[int(fire[0])],), params={
+
+#Create kickstart stimulus
+if do_kickstart:
+    kickstart = nest.Create('poisson_generator',params={'start': 1.0, 'stop': 2.0, 'rate': float(2*stim_strength)})
+    for n in range(1,nnum+1):
+	    nest.Connect(kickstart,(n,))
+
+ntnstatus("Kickstarting")
+nest.Simulate(float(200))
+
+#run the simulation
+s=[[],[]]
+for i in range(len(stim_order)):
+    ntnstatus("Running simulation from "+str((i+1)*time_gap)+" to "+str((i+2)*time_gap)+"ms")
+    for fire in firing_pattern[i]:
+	    nest.SetStatus((stimuli[int(fire[0])],), params={
 		 'start': round(float(fire[1]),1),
 		 'stop': round(float(fire[2]),1),
 		 'rate': float(fire[3]*stim_strength)})
+    nest.Simulate(float(time_gap))
+    spikes = nest.GetStatus(spikedetector)[0]['events']
+    s[0].extend(spikes['senders'])
+    s[1].extend(spikes['times'])
+    nest.SetStatus(spikedetector, {'n_events': 0})
 
-#run the simulation
-simulation_id = datetime.now().strftime("%s")                               # Custom ID so files are not overwritten
-exp_length = time_gap*repetitions*num_stimuli+time_gap+200
-ntnstatus("Running simulation of "+str(exp_length)+"ms")
-nest.Simulate(float(exp_length))
-#v = nest.GetStatus(voltmeter)[0]['events']['V_m']     # volts
-s = nest.GetStatus(spikedetector)[0]['events']        # spikes
-np.save(root+'/simulations/droso_long_'+simulation_id+'.npy', np.array(s,dtype=object))
+np.save(root+'/simulations/droso_long_'+simulation_id+'.npy', np.array(s))
+
 ntnsubstatus('Simulation name: droso_long_'+simulation_id)
+ntnsubstatus('Repetitions: '+str(repetitions)+', Number of Stimuli: '+str(num_stimuli))

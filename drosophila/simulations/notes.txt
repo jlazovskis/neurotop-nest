@@ -1,0 +1,2 @@
+droso_long_1599486997 : 10 reps : 5 stimuli : noise 2 : stim_strength 500000 : stim_length 10 : kicktstart False : timegap 200
+droso_long_1599489377 : 10 reps : 5 stimuli : noise 1 : stim_strength 500000 : stim_length 10 : kicktstart False : timegap 200
