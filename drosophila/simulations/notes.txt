@@ -1,2 +1,22 @@
 droso_long_1599486997 : 10 reps : 5 stimuli : noise 2 : stim_strength 500000 : stim_length 10 : kicktstart False : timegap 200
 droso_long_1599489377 : 10 reps : 5 stimuli : noise 1 : stim_strength 500000 : stim_length 10 : kicktstart False : timegap 200
+
+
+
+Choose stim length: 10 seems best
+1 rep : 2 stim : noise 1 : stim_strength 500000 : stim_length 15 : kicktstart False : timegap 200 : max 0.098 spike perc
+1 rep : 2 stim : noise 1 : stim_strength 500000 : stim_length 10 : kicktstart False : timegap 200 : max 0.098 spike perc
+1 rep : 2 stim : noise 1 : stim_strength 500000 : stim_length 9 : kicktstart False : timegap 200 : max 0.089 spike perc
+1 rep : 2 stim : noise 1 : stim_strength 500000 : stim_length 7.5 : kicktstart False : timegap 200 : max 0.089 spike perc
+1 rep : 2 stim : noise 1 : stim_strength 500000 : stim_length 5 : kicktstart False : timegap 200 : max 0.085 spike perc
+
+Choose stim strength:
+1 rep : 2 stim : noise 1 : stim_length 10 : kickstart False : timegap 200
+
+stim_strength = 50000 : max spike perc 0.54
+stim_strength = 100000 : max spike perc 0.67
+stim_strength = 1000000 : max spike perc 0.106
+stim_strength = 5000000 : max spike perc 0.151
+stim_strength = 50000000 : max spike perc 0.177
+stim_strength = 500000000 : max spike perc 0.181
+stim_strength = 5000000000 : max spike perc 0.180

@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Output spike only plot
-def make_spikeplot(name,length,step=5):
+def make_spikeplot(name,length,step=5,nnum=25287):
 
 	# Set styles and lists
 	c_exc = (0.8353, 0.0, 0.1961)
@@ -34,3 +34,4 @@ def make_spikeplot(name,length,step=5):
 	# Format and save figure
 	plt.tight_layout()
 	plt.savefig(name+'.png', dpi=200)
+	print(max([np.count_nonzero(np.array(timebin))/nnum for timebin in type1_by_timebin]))

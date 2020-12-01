@@ -23,19 +23,21 @@ import operator
 
 #******************************************************************************#
 #config
-repetitions = 10
+repetitions = 500
 num_stimuli = 5
 time_gap = 200
-root='/home/jason/Documents/neurotop-nest/drosophila/'                                                                       # Current working directory
-token_address = '/home/jason/Documents/data/fruit_fly/janelia.key'              # A text file containing the key for accessing janelia reconstruction
+root='/uoa/scratch/shared/mathematics/neurotopology/nest/neurotop-nest/drosophila/'# Current working directory
+token_address = '/uoa/home/s10js8/data/janelia.key'
+#root='/home/phys3smithj/Documents/software/neurotop-nest/drosophila/'          # Current working directory
+#token_address = '/home/phys3smithj/Documents/data/janelia.key'                 # A text file containing the key for accessing janelia reconstruction
 dataset = "hemibrain:v1.1"                                                      # Which janelia dataset to use
 parallel_threads = 8                                                            # Number of threads to run NEST simulation on
 inh_prop = 0.1                                                                  # Proportion of connections which are inhibitory
 exc = {'weight':0.3, 'delay':1.0, 'transmit':0.13}                              # Excitatory synapse parameters
 inh = {'weight':-1.5, 'delay':0.1, 'transmit':0.13}                             # Inhibitory synapse parameters
-stim_strength = 500000
-noise_strength = 1
-stim_length = 10                                             # Length stimulus is applied for, in milliseconds
+stim_strength = 50000000
+noise_strength = 0
+stim_length = 10                                                                # Length stimulus is applied for, in milliseconds
 simulation_id = datetime.now().strftime("%s")
 do_kickstart = False
 
@@ -103,7 +105,7 @@ np.save(root+'/stimuli/droso_long_'+simulation_id+'.npy',np.array([fibres,firing
 nest.ResetKernel()                                                          # Reset nest
 nest.SetKernelStatus({"local_num_threads": parallel_threads,
                       "overwrite_files": True,
-                      "data_path": root+'simulations/'})                # Run on many threads
+                      "data_path": root+'simulations/'})                    # Run on many threads
 
 ntnstatus('Constructing circuit')
 network = nest.Create('izhikevich', n=nnum, params={'a':1.1})
@@ -177,11 +179,12 @@ for i in range(len(stim_order)):
 		 'rate': float(fire[3]*stim_strength)})
     nest.Simulate(float(time_gap))
     spikes = nest.GetStatus(spikedetector)[0]['events']
-    s[0].extend(spikes['senders'])
-    s[1].extend(spikes['times'])
+    s[1].extend(spikes['senders'])
+    s[0].extend(spikes['times'])
     nest.SetStatus(spikedetector, {'n_events': 0})
 
-np.save(root+'/simulations/droso_long_'+simulation_id+'.npy', np.array(s))
+#Output is a numpy array with two columns, first column is spike time, second column is spiking gid
+np.save(root+'/simulations/droso_long_'+simulation_id+'.npy', np.transpose(np.array(s)))
 
 ntnsubstatus('Simulation name: droso_long_'+simulation_id)
 ntnsubstatus('Repetitions: '+str(repetitions)+', Number of Stimuli: '+str(num_stimuli))
