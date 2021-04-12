@@ -39,8 +39,8 @@ args = parser.parse_args()
 
 #******************************************************************************#
 #config
-root='./'                                                                       # Current working directory
-token_address = '/home/jason/Documents/data/fruit_fly/janelia.key'              # A text file containing the key for accessing janelia reconstruction
+root='/uoa/scratch/shared/mathematics/neurotopology/nest/neurotop-nest/drosophila/'# Current working directory
+token_address = '/uoa/home/s10js8/data/janelia.key'                             # A text file containing the key for accessing janelia reconstruction, please 
 dataset = "hemibrain:v1.1"                                                      # Which janelia dataset to use
 parallel_threads = 8                                                            # Number of threads to run NEST simulation on
 inh_prop = 0.1                                                                  # Proportion of connections which are inhibitory
@@ -215,3 +215,4 @@ if __name__=="__main__":
         design_stimuli(results)
     if not args.disable_simulate:
         run_nest_simulation()
+
