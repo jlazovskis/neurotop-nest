@@ -25,7 +25,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument('--time', type=int, default=300, help='Length, in milliseconds, of experiment.')
 parser.add_argument('--noise_strength', type=float, default=3, help='Strength of noise.')
 
-parser.add_argument('--stimulus_strength', type=int, default=50000, help='Strength of stimulus.')
+parser.add_argument('--stimulus_strength', type=int, default=3000, help='Strength of stimulus.')
 parser.add_argument('--stimulus_start', type=int, default=100, help='Start time of stimulus.')
 parser.add_argument('--stimulus_length', type=int, default=5, help='Length of stimulus.')
 
@@ -48,7 +48,6 @@ stim_strength = args.stimulus_strength
 noise_strength = args.noise_strength
 stim_length = args.stimulus_length                               # Length stimulus is applied for, in milliseconds
 stim_start = args.stimulus_start                                 # Time at which stimulus is introduced, in milliseconds
-stimulus_odor = args.stimulus
 
 # ****************************************************************************** #
 # Auxiliary: Formatted printer for messages
@@ -68,7 +67,7 @@ def ntnsubstatus(message):
 def build_matrix():
     ntnstatus('Retrieving structural information from OWMeta')
     conn = OWM().connect()
-    ctx = conn(Context)(ident='https://openworm.org/data')
+    ctx = conn(Context)(ident='http://openworm.org/data')
     net = ctx.stored(Worm).query().neuron_network()
     neurons = sorted(
         list(net.neuron()),
@@ -94,22 +93,25 @@ def build_matrix():
         pre_cell = connection.pre_cell()
         post_cell = connection.post_cell()
         weight = connection.number()
-        if connection.syntype == 'send': #Chemical synapses
-            if is_inhibitory(connection):
-                inh_syn_matrix[
+        try:
+            if connection.syntype() == 'send': #Chemical synapses
+                if is_inhibitory(connection):
+                    inh_syn_matrix[
+                        name2id[pre_cell.name()],
+                        name2id[post_cell.name()]
+                    ] += weight
+                else:
+                    exc_syn_matrix[
+                        name2id[pre_cell.name()],
+                        name2id[post_cell.name()]
+                    ] += weight
+            elif connection.syntype() == 'gapJunction':
+                gj_matrix[
                     name2id[pre_cell.name()],
                     name2id[post_cell.name()]
-                ] += weight
-            else:
-                exc_syn_matrix[
-                    name2id[pre_cell.name()],
-                    name2id[post_cell.name()]
-                ] += weight
-        elif connection.syntype == 'gapJunction':
-            gj_matrix[
-                name2id[pre_cell.name()],
-                name2id[post_cell.name()]
-            ] = weight
+                ] = weight
+        except KeyError:
+            pass # Non-neuron was found.
 
 
     # Save results in npy format
@@ -122,34 +124,44 @@ def build_matrix():
 def run_nest_simulation():
     nest.ResetKernel()                                                          # Reset nest
     nest.SetKernelStatus({"local_num_threads": parallel_threads})               # Run on many threads
-
+    # Settings for gap junctions
+    nest.SetKernelStatus({'use_wfr': True,
+                      'wfr_comm_interval': 1.0,
+                      'wfr_tol': 0.0001,
+                      'wfr_max_iterations': 15,
+                      'wfr_interpolation_order': 3})
     ntnstatus('Loading celegans structural information')
-    exc = np.load(root+"structure/celegans_chemical_excitatory.npy").item()
-    inh = np.load(root+"structure/celegans_chemical_inhibitory.npy").item()
-    gj = np.load(root+"structure/celegans_gjunctions.npy").item()                                                     # Number of synapses in circuit
+    exc = np.load(root+"structure/celegans_chemical_excitatory.npy")
+    inh = np.load(root+"structure/celegans_chemical_inhibitory.npy")
+    gj = np.load(root+"structure/celegans_gjunctions.npy")
     nnum = exc.shape[0]
 
     ntnstatus('Constructing circuit')
-    network = nest.Create('izhikevich', n=nnum, params={'a':1.1})
+    network = nest.Create('hh_psc_alpha_gap', n=nnum)
 
     def connect_syn_targets(matrix, source, conn_spec, params):
-        targets = np.nonzero(matrix[source].flatten())
-        if targets:
-            nest.Connect(
-                (source+1,),
-                targets,
-                conn_spec,
-                params
-            )
-
-    def connect_gap_junctions(matrix, source, conn_spec, params):
-        targets = np.nonzero(matrix[source].flatten())
+        targets = np.nonzero(matrix[source].flatten())[0]
         for target in targets:
+            weight = matrix[source,target]
+            target_params = params.copy()
+            target_params['weight'] *= weight
             nest.Connect(
                 (source+1,),
                 (target+1,),
-                conn_spec,
-                params
+                syn_spec = params,
+            )
+
+    def connect_gap_junctions(matrix, source, conn_spec, params):
+        targets = np.nonzero(matrix[source].flatten())[0]
+        for target in targets:
+            weight = matrix[source,target]
+            target_params = params.copy()
+            target_params['weight'] *= weight
+            nest.Connect(
+                (source+1,),
+                (target+1,),
+                conn_spec = conn_spec,
+                syn_spec = params
             )
 
     for source in tqdm.tqdm(range(nnum)):
@@ -175,12 +187,18 @@ def run_nest_simulation():
     for n in range(1, nnum+1):
         nest.Connect(voltmeter, (n,))
         nest.Connect((n,), spikedetector)
-
     # Create kickstart stimulus
-    kickstart = nest.Create('poisson_generator',params={'start': stim_start, 'stop': stim_start + stim_length, 'rate': float(2*stim_strength)})
-    for n in range(1, nnum+1):
-        nest.Connect(kickstart, (n,))
-
+    # kickstart = nest.Create(
+    #                'dc_generator',
+    #                params={
+    #                        'start': float(stim_start),
+    #                        'stop': float(stim_start + stim_length),
+    #                        'amplitude': float(2*stim_strength)
+    #                }
+    #            )
+    #for n in range(1, nnum+1):
+        #nest.Connect(kickstart, (n,))
+    # nest.Connect(kickstart, (1,))
     # Connect stimulus to circuit
     # ntnstatus('Creating thalamic nerves for stimulus')
     # fibres, firing_pattern = np.load(root+'stimuli/drosophila_'+stimulus_odor+'.npy', allow_pickle=True)
@@ -194,14 +212,20 @@ def run_nest_simulation():
     #        'stop': round(float(fire[2]),1),
     #        'rate': float(fire[3]*stim_strength)})
 
+    # Excite neuron 1
+    nest.SetStatus([network[0]], {"I_e": 486.})
     # run the simulation
     simulation_id = datetime.now().strftime("%s")                               # Custom ID so files are not overwritten
     ntnstatus("Running simulation of "+str(exp_length)+"ms")
     nest.Simulate(float(exp_length))
-    # v = nest.GetStatus(voltmeter)[0]['events']['V_m']     # volts
+    v = nest.GetStatus(voltmeter)[0]['events']['V_m']     # volts
+    senders = nest.GetStatus(voltmeter)[0]['events']['senders']
     s = nest.GetStatus(spikedetector)[0]['events']        # spikes
-    save_name = root+'/simulations/celegans_test.npy'
-    np.save(save_name, np.array(s, dtype=object))
+    v = [v[senders == i+1] for i in range(nnum)]
+    save_name = root+'simulations/celegans_volt.npy'
+    spike_save_name = root + 'simulations/celegans_spikes.npy'
+    np.save(save_name, np.array(v, dtype=object))
+    np.save(spike_save_name, np.array(s, dtype = object))
     ntnsubstatus("Simulation name: " + save_name)
 
 
