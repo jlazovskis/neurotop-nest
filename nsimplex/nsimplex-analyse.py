@@ -18,12 +18,12 @@ parser = argparse.ArgumentParser(
     description='n-simplex Nest Circuit',
     usage='python nsimplex.py')
 parser.add_argument('--root', type=str, default='.', help='Root directory for importing and exporting files')
-parser.add_argument('--circuit', type=str, default='3simplex', help='Name of circuit file, without .npy.')
+parser.add_argument('--circuit', type=str, default='3simplex', help='Path to circuit file, without .npy.')
 
 parser.add_argument('--simulation_id', type=int, default=0, help='Simulation id')
 parser.add_argument('--number_vertices', type=int, default=4, help='Number of vertices in the graph.')
 
-parser.add_argument('--time', type=int, default=100, help='Length, in milliseconds, between stimuli. Must be an integer.')
+parser.add_argument('--time', type=int, default=100, help='Length of the simulation')
 
 args = parser.parse_args()
 
@@ -68,9 +68,13 @@ ax.invert_yaxis()
 v_min = min(volts['V_m'])
 v_max = max(volts['V_m'])
 v_range = max([0.1,v_max-v_min])
-for v in range(nnum):
-	v_ind = np.where(volts['senders'] == 1)[0]
-	ax.plot([volts['times'][i] for i in v_ind], [(volts['V_m'][i]-v_min)/v_range+v for i in v_ind])
+for j in range(1, nnum+1):
+    v_ind = np.where(volts['senders'] == j)[0]
+    sp_ind = np.where(spikes['senders'] == j)[0]
+    ax.plot([volts['times'][i] for i in v_ind], [-(volts['V_m'][i]-v_min)/v_range+j for i in v_ind])
+    ax.annotate(str(len(
+       [spikes['times'][i] for i in sp_ind]
+       )), [5,j])
 
 # Plot individual spikes
 ax.scatter(spikes['times'], spikes['senders'], s=20, marker="s",  edgecolors='none', alpha=.8)
