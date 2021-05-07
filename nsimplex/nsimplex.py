@@ -6,7 +6,7 @@ import numpy as np                                               # For current d
 import nest                                                      # For main simulation
 import argparse                                                  # For options
 from datetime import datetime
-
+from pathlib import Path
 # ******************************************************************************#
 # Read arguments
 parser = argparse.ArgumentParser(
@@ -26,7 +26,7 @@ parser.add_argument('--stimulus_length', type=int, default=100, help='Length of 
 parser.add_argument('--stimulus_start', type=int, default=5, help='Length of stimulus.')
 parser.add_argument('--time', type=int, default=200, help='Length, in milliseconds, between stimuli. Must be an integer. Default is 200.')
 parser.add_argument('--threads', type=int, default=40, help='Number of parallel thread to use. Must be an integer. Default is 40.')
-
+parser.add_argument('--id_prefix', type=str, default='', help='Prefix for sim ID')
 keyword_args = parser.parse_args()
 
 # ******************************************************************************#
@@ -50,18 +50,17 @@ def simulate(args):
     exc = {'weight':10.0, 'delay':0.5, 'transmit':0.13}                             # Excitatory synapse parameters
     inh = {'weight':-1.5, 'delay':0.1, 'transmit':0.13}                            # Inhibitory synapse parameters
 
-    simulation_id = datetime.now().strftime("%s")                                  # Custom ID so files are not overwritten
+    simulation_id = args.id_prefix + datetime.now().strftime("%s")                                  # Custom ID so files are not overwritten
 
 
     #******************************************************************************#
     # Load circuit and stimulus
-    ntnstatus('Loading circuit and stimulus')
-    adj = np.load(root+'/structure/'+args.exc_adj+'.npy')                          # Adjacency matrix of circuit
+    ntnstatus('Loading circuit and stimulus from ' + root+'/structure/'+args.exc_adj+'.npy')
+    adj = np.load(root+'/structure/'+args.exc_adj+'.npy', allow_pickle = True)                          # Adjacency matrix of circuit
     if args.inh_adj:
-        adj_inh = np.load(root+'/structure/'+args.inh_adj+'.npy')                  # Inhibitory synapse mask
+        adj_inh = np.load(root+'/structure/'+args.inh_adj+'.npy', allow_pickle = True)                  # Inhibitory synapse mask
     else:
         adj_inh = np.zeros_like(adj)
-
     nnum = len(adj)
     stimulus_targets = {
         'all':[list(range(nnum))],
@@ -155,19 +154,22 @@ def simulate(args):
     volts = nest.GetStatus(voltmeter)[0]['events']
 
     # Save results
+    volt_save_path = root+'/simulations/'+str(args.save_name)+'_'+simulation_id+'-volts.npy'
+    spikes_save_path = root+'/simulations/'+str(args.save_name)+'_'+simulation_id+'-spikes.npy'
+    Path(spikes_save_path).parent.mkdir(parents=True, exist_ok=True)
     np.save(
-        root+'/simulations/'+str(args.save_name)+'_'+simulation_id+'-spikes.npy',
+        spikes_save_path,
         np.array([spikes['senders'],spikes['times']])
         )
     np.save(
-        root+'/simulations/'+str(args.save_name)+'_'+simulation_id+'-volts.npy',
+        volt_save_path,
         np.array([volts['senders'],volts['times'],volts['V_m']])
         )
 
     ntnsubstatus('Simulation name: '+args.save_name + simulation_id)
     ntnsubstatus('Arguments used:')
     print(args)
-
+    return simulation_id
 
 if __name__ == '__main__':
     simulate(keyword_args)
