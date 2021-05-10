@@ -20,6 +20,7 @@ def build_matrices(path, n):
         matrix = triu_from_array(np.array(array), n)
         matrix = np.triu(np.ones((n,n)).astype(np.bool))+matrix.T
         identifier = ''.join([str(int(elem)) for elem in array])
+        print(identifier)
         save_path = path.with_name(path.stem + identifier + '.npy')
         (Path('structure') / save_path).parent.mkdir(parents=True, exist_ok=True)
         np.save(Path('structure') / save_path, matrix, allow_pickle = True)
@@ -32,7 +33,8 @@ def run_simulations(args):
     for path in paths:
         args.exc_adj = str(path.with_name(path.stem))
         args.inh_adj = ''
-        args.id_prefix = path.stem[-args.n:]
+        combinations = int(args.n * (args.n-1) / 2)
+        args.id_prefix = path.stem[-combinations:]
         ids.append(simulate(args))
     return ids
 
