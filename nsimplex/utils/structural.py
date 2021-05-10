@@ -1,5 +1,15 @@
 import numpy as np
-import recursive_maximal_count as rmc
+
+# Load function for recursive simplex count.
+# Shouldn't be dependent on where you run this script from.
+from pathlib import Path
+from importlib.util import spec_from_file_location, module_from_spec
+module_path = (Path(__file__).parent / "recursive_maximal_count.py").absolute()
+module_name = "rmc"
+rmc_spec = spec_from_file_location(module_name, str(module_path))
+rmc = module_from_spec(rmc_spec)
+rmc_spec.loader.exec_module(rmc)
+# ###################################
 
 def _value_range(array):
     return np.max(array) - np.min(array)
