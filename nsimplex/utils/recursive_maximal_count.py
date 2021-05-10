@@ -5,7 +5,7 @@ def get_sig(matrix):
     c = 0
     for i, row in enumerate(matrix):
         for j in row[i+1:]:
-            sig += j*2**c
+            sig += 2**c if j else 0
             c += 1
     return int(sig + 2**c)
 
@@ -28,19 +28,23 @@ def submatrix(matrix, y):
 
 matrix_table = {}
 
-
 def recursive_n_simplices(matrix, hashing = True):
+    # Small wrapper to convert to used format: triu matrix with entries equal to bedges
+    _matrix = np.tril(matrix).T
+    return _recursive_n_simplices(_matrix)
+
+def _recursive_n_simplices(_matrix, hashing = True):
     if hashing:
         try:
-            return matrix_table[get_sig(matrix)]
+            return matrix_table[get_sig(_matrix)]
         except KeyError:
-            if matrix.shape[0] == 1:
-                matrix_table[get_sig(matrix)] = 1
+            if _matrix.shape[0] == 1:
+                matrix_table[get_sig(_matrix)] = 1
                 return 1
-            res = np.sum([recursive_n_simplices(submatrix(matrix,y), hashing = True) for y in final_indices(matrix)])
-            matrix_table[get_sig(matrix)] = res
+            res = np.sum([_recursive_n_simplices(submatrix(_matrix,y), hashing = True) for y in final_indices(_matrix)])
+            matrix_table[get_sig(_matrix)] = res
             return res
     else:
-        if matrix.shape[0] == 1:
+        if _matrix.shape[0] == 1:
             return 1
-        return np.sum([recursive_n_simplices(submatrix(matrix,y), hashing = False) for y in final_indices(matrix)])
+        return np.sum([_recursive_n_simplices(submatrix(_matrix,y), hashing = False) for y in final_indices(matrix)])

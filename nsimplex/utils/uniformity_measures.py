@@ -7,7 +7,7 @@ def _normalize(matrix):
 def _average_triu(matrix):
     return np.sum(np.triu(matrix, 1)) / matrix.shape[0] / (matrix.shape[0]-1) * 2
 
-def average_correlation(traces: np.array) -> float:
+def average_pearson(traces: np.array) -> float:
     # Each row is a trace.
     traces_noavg = traces - np.expand_dims(np.mean(traces, axis = 1), -1)
     similarity_matrix = np.dot(traces_noavg, traces_noavg.T)
