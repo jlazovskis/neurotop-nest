@@ -16,7 +16,12 @@ import matplotlib as mpl                                                    # Fo
 from pathlib import Path                                                    # For file management
 
 
-from utils.uniformity_measures import average_pearson, average_cosine_distance, spike_range
+from utils.uniformity_measures import (
+                          average_pearson,
+                          average_cosine_distance,
+                          spike_range,
+                          spike_count
+                     )
 from utils.structural import (
                           directionality,
                           indegree_range, outdegree_range,
@@ -115,6 +120,7 @@ def get_record(voltage, spike_trains, graph, id):
         average_cosine_distance(voltage),
         average_cosine_distance(spike_trains),
         spike_range(spike_trains),
+        spike_count(spike_trains),
         directionality(graph),
         indegree_range(graph),
         outdegree_range(graph),
@@ -132,6 +138,7 @@ column_names = [
     'voltage cosine distance',
     'ST cosine distance',
     'spike count range',
+    'spike count',
     'directionality',
     'indegree range',
     'outdegree range',
