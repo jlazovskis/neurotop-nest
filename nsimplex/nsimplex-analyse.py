@@ -16,7 +16,7 @@ import matplotlib as mpl                                                    # Fo
 from pathlib import Path                                                    # For file management
 
 
-from utils.uniformity_measures import average_pearson, average_cosine_distance
+from utils.uniformity_measures import average_pearson, average_cosine_distance, spike_range
 from utils.structural import (
                           directionality,
                           indegree_range, outdegree_range,
@@ -60,7 +60,7 @@ def _spike_trains(spikes_dictionary, nnum, binsize, simlength):
     for j in range(nnum):
         sp_ind = np.where(spikes_dictionary['senders'] == j+1)[0]
         times = np.array(spikes['times'][sp_ind])
-        st = [np.count_nonzero(np.logical_and(times < node + binsize, times > binsize))
+        st = [np.count_nonzero(np.logical_and(times < node + binsize, times > node))
                   for node in list(range(0, simlength, binsize))[:-1]]
         strains.append(st)
     return np.stack(strains)
@@ -114,6 +114,7 @@ def get_record(voltage, spike_trains, graph, id):
         average_pearson(spike_trains),
         average_cosine_distance(voltage),
         average_cosine_distance(spike_trains),
+        spike_range(spike_trains),
         directionality(graph),
         indegree_range(graph),
         outdegree_range(graph),
@@ -130,6 +131,7 @@ column_names = [
     'ST PC',
     'voltage cosine distance',
     'ST cosine distance',
+    'spike count range',
     'directionality',
     'indegree range',
     'outdegree range',
@@ -156,6 +158,7 @@ if __name__ == '__main__':
     parser.add_argument('--structure_path', type=str, default='3simplex/3simplex', help='Path to circuit exc matrices.')
     parser.add_argument('--n', type=int, default=3, help='Number of vertices in the graph.')
     parser.add_argument('--time', type=int, default=200, help='Length of the simulation')
+    parser.add_argument('--binsize', type=int, default=5, help='Spike train bin size.')
 
     args = parser.parse_args()
 
@@ -174,7 +177,7 @@ if __name__ == '__main__':
         volts = load_volts(voltage_path)
         volt_array = _volt_array(volts, nnum)
         spikes = load_spikes(spike_path)
-        spike_trains = _spike_trains(spikes, nnum, 5, 200)
+        spike_trains = _spike_trains(spikes, nnum, args.binsize, args.time)
         graph = np.load(structure_path, allow_pickle = True)
         if np.all([char == '0' for char in simulation_id]):
             plot_traces(volts, spikes, images_path / (simulations_stem_prefix + 'simple'))
@@ -185,4 +188,3 @@ if __name__ == '__main__':
     # Plot results
     sns_pairplot = sns.pairplot(df, kind='reg')
     sns_pairplot.savefig(images_path / (simulations_stem_prefix + 'pairplot'))
-
