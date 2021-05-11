@@ -1,5 +1,5 @@
 from unittest import TestCase
-from uniformity_measures import (average_pearson, average_cosine_distance)
+from uniformity_measures import (average_pearson, average_cosine_distance, spike_range)
 import numpy as np
 
 # Uniformity measures tests
@@ -38,3 +38,20 @@ class CosineDistanceTest(TestCase):
             [-1,-2,-3,-4,-5]
         ])
         self.assertAlmostEqual(average_cosine_distance(array3), -1.)
+
+class SpikeTrainRangeTest(TestCase):
+    def test_st_range(self):
+        array1 = np.array([
+            [1,0,1,2],
+            [2,1,2,1],
+            [0,1,1,2],
+            [2,1,2, 1]
+           ])
+        self.assertEqual(spike_range(array1), 2)
+        array2 = np.ones((4,4))
+        self.assertEqual(spike_range(array2), 0)
+        array3 = np.array([
+            [1,2,3,4,5],
+            [2,3,4,5,6]
+        ])
+        self.assertEqual(spike_range(array3), 5)

@@ -19,6 +19,10 @@ def average_cosine_distance(traces: np.array) -> float:
     correlation_matrix = _normalize(similarity_matrix)
     return _average_triu(correlation_matrix)
 
+def spike_range(spike_trains: np.array) -> int:
+    total_spikes = np.sum(spike_trains, axis = 1)
+    return int(np.max(total_spikes) - np.min(total_spikes))
+
 def average_mutual_information():
     raise NotImplementedError
 
