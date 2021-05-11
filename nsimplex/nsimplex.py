@@ -99,7 +99,7 @@ def simulate(args):
     # Connect stimulus to circuit
     ntnstatus('Creating stimulus for stimulus')
     fire = firing_pattern[0]
-    if args.stimulus_type == 'poisson':
+    if args.stimulus_type == 'poisson' or 'poisson_parrot':
         stimuli = nest.Create('poisson_generator', n=len(fibres))
         nest.SetStatus((stimuli[int(fire[0])],), params={
              'start': round(float(fire[1]),1),
@@ -119,10 +119,18 @@ def simulate(args):
              'amplitude': float(fire[3]),
              'frequency': args.stimulus_frequency})
 
-    for fibre_index in range(len(fibres)):
-        fibre = fibres[fibre_index]
-        for target in fibre:
-            nest.Connect((stimuli[fibre_index],),(target+1,))
+    if args.stimulus_type == 'poisson_parrot':
+         parrot_neurons = nest.Create('parrot_neuron', n=len(fibres))
+         for fibre_index in range(len(fibres)):
+             nest.Connect((stimuli[fibre_index],),(parrot_neurons[fibre_index],))
+             fibre = fibres[fibre_index]
+             for target in fibre:
+                 nest.Connect((parrot_neurons[fibre_index],),(target+1,))
+    else:
+        for fibre_index in range(len(fibres)):
+            fibre = fibres[fibre_index]
+            for target in fibre:
+                nest.Connect((stimuli[fibre_index],),(target+1,))
 
 
     #******************************************************************************#
