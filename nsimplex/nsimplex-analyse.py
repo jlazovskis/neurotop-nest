@@ -3,6 +3,7 @@
 
 # Packages
 import pandas as pd
+import seaborn as sns
 import numpy as np
 import scipy.sparse as sparse
 import sys                                                                  # For current directory to read and write files
@@ -103,6 +104,8 @@ def plot_traces(volts, spikes, figname):
 
     ntnsubstatus('File name: '+str(figname))
 
+# *******************************************************************
+
 # Record generation
 def get_record(voltage, spike_trains, graph, id):
     record = [
@@ -179,5 +182,7 @@ if __name__ == '__main__':
             plot_traces(volts, spikes, images_path / (simulations_stem_prefix + 'full'))
         df.append(get_record(volt_array, spike_trains, graph, simulation_id))
     df = pd.DataFrame(df, columns = column_names)
-    print(df)
+    # Plot results
+    sns_pairplot = sns.pairplot(df, kind='reg')
+    sns_pairplot.savefig(images_path / (simulations_stem_prefix + 'pairplot'))
 
