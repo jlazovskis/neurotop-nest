@@ -18,7 +18,7 @@ def build_matrices(path, n):
     save_paths = []
     for array in product([False,True], repeat = int(n*(n-1)/2)):
         matrix = triu_from_array(np.array(array), n)
-        matrix = np.triu(np.ones((n,n)).astype(np.bool))+matrix.T
+        matrix = np.triu(np.ones((n,n)).astype(np.bool), 1)+matrix.T
         identifier = ''.join([str(int(elem)) for elem in array])
         save_path = path.with_name(path.stem + identifier + '.npy')
         (Path('structure') / save_path).parent.mkdir(parents=True, exist_ok=True)
