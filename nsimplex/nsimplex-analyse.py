@@ -199,4 +199,43 @@ if __name__ == '__main__':
     df = pd.DataFrame(df, columns = column_names)
     # Plot results
     sns_pairplot = sns.pairplot(df, kind='reg')
+    sns_pairplot.savefig(images_path / (simulations_stem_prefix + 'pairplot_reg'))
+    sns_pairplot = sns.pairplot(df)
     sns_pairplot.savefig(images_path / (simulations_stem_prefix + 'pairplot'))
+    sns_pairplot = sns.pairplot(df, vars=[
+                                    'voltage PC',
+                                    'ST PC',
+                                    'directional voltage PC',
+                                    'directional ST PC',
+                                    'directionality',
+                                    'maximal simplices',
+                                    'bidirectional edges'
+                                    ])
+    sns_pairplot.savefig(images_path / (simulations_stem_prefix + 'pairplot_mini'))
+    sns_pairplot = sns.pairplot(df, vars=[
+                                    'voltage PC',
+                                    'ST PC',
+                                    'directional voltage PC',
+                                    'directional ST PC',
+                                    'directionality',
+                                    'maximal simplices',
+                                    'bidirectional edges'
+                                    ], kind = 'reg')
+    sns_pairplot.savefig(images_path / (simulations_stem_prefix + 'pairplot_mini_reg'))
+    figure = plt.figure(figsize=[10,6])
+    ax = figure.add_subplot()
+    sns.boxplot(data = df, x = 'bidirectional edges', y = 'voltage PC', ax = ax)
+    figure.savefig(images_path / (simulations_stem_prefix + 'voltage_edges_bp'))
+    figure = plt.figure(figsize=[10,6])
+    ax = figure.add_subplot()
+    sns.boxplot(data = df, x = 'maximal simplices', y = 'voltage PC', ax = ax)
+    figure.savefig(images_path / (simulations_stem_prefix + 'voltage_msimp_bp'))
+    figure = plt.figure(figsize=[10,6])
+    ax = figure.add_subplot()
+    sns.boxplot(data = df, x = 'bidirectional edges', y = 'directional voltage PC', ax = ax)
+    figure.savefig(images_path / (simulations_stem_prefix + 'dvoltage_edges_bp'))
+    figure = plt.figure(figsize=[10,6])
+    ax = figure.add_subplot()
+    sns.boxplot(data = df, x = 'maximal simplices', y = 'directional voltage PC', ax = ax)
+    figure.savefig(images_path / (simulations_stem_prefix + 'dvoltage_msimp_bp'))
+
