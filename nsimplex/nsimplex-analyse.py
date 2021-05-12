@@ -19,6 +19,7 @@ from pathlib import Path                                                    # Fo
 from utils.uniformity_measures import (
                           average_pearson,
                           average_cosine_distance,
+                          average_pearson_directional,
                           spike_range,
                           spike_count
                      )
@@ -119,6 +120,8 @@ def get_record(voltage, spike_trains, graph, id):
         average_pearson(spike_trains),
         average_cosine_distance(voltage),
         average_cosine_distance(spike_trains),
+        average_pearson_directional(spike_trains, graph),
+        average_pearson_directional(voltage, graph),
         spike_range(spike_trains),
         spike_count(spike_trains),
         directionality(graph),
@@ -137,6 +140,8 @@ column_names = [
     'ST PC',
     'voltage cosine distance',
     'ST cosine distance',
+    'directional voltage PC',
+    'directional ST PC',
     'spike count range',
     'spike count',
     'directionality',
