@@ -1,5 +1,5 @@
 from unittest import TestCase
-from uniformity_measures import (average_pearson, average_cosine_distance, spike_range)
+from uniformity_measures import (average_pearson, average_cosine_distance, spike_range, average_pearson_directional)
 import numpy as np
 
 # Uniformity measures tests
@@ -21,6 +21,16 @@ class AverageCorrelationTest(TestCase):
             [-1,-2,-3,-4,-5]
         ])
         self.assertAlmostEqual(average_pearson(array3), -1.)
+
+    def test_average_pearson_directional(self):
+        array1 = np.random.rand(4,4)
+        graph = np.array([
+            [0, 1, 1, 1],
+            [0, 0, 1, 1],
+            [0, 0, 0, 1],
+            [0, 0, 0, 0]
+           ])
+        self.assertAlmostEqual(average_pearson(array1), average_pearson_directional(array1, graph))
 
 class CosineDistanceTest(TestCase):
     def test_cosine_distance(self):

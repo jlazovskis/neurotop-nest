@@ -27,7 +27,8 @@ def spike_count(spike_trains: np.array) -> int:
     return np.sum(spike_trains)
 
 def average_pearson_directional(traces: np.array, graph: np.array) -> float:
-    similarity_matrix = np.dot(traces, traces.T)
+    traces_noavg = traces - np.expand_dims(np.mean(traces, axis = 1), -1)
+    similarity_matrix = np.dot(traces_noavg, traces_noavg.T)
     correlation_matrix = _normalize(similarity_matrix)
     mask = np.logical_and(graph, np.logical_not(np.multiply(graph, graph.T)))
     samples = correlation_matrix[np.where(mask)]
