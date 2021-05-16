@@ -120,8 +120,8 @@ def get_record(voltage, spike_trains, graph, id):
         average_pearson(spike_trains),
         average_cosine_distance(voltage),
         average_cosine_distance(spike_trains),
-        average_pearson_directional(spike_trains, graph),
         average_pearson_directional(voltage, graph),
+        average_pearson_directional(spike_trains, graph),
         spike_range(spike_trains),
         spike_count(spike_trains),
         directionality(graph),
@@ -243,6 +243,6 @@ if __name__ == '__main__':
     for col, title in zip(columns,titles):
         figure = plt.figure(figsize=[10,6])
         ax = figure.add_subplot()
-        sns.boxplot(data = df, x = col, y = 'directional voltage PC', ax = ax)
+        sns.boxplot(data = df, x = col, y = 'voltage PC', ax = ax)
         figure.savefig(images_path / (simulations_stem_prefix + title))
     
