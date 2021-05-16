@@ -238,4 +238,11 @@ if __name__ == '__main__':
     ax = figure.add_subplot()
     sns.boxplot(data = df, x = 'maximal simplices', y = 'directional voltage PC', ax = ax)
     figure.savefig(images_path / (simulations_stem_prefix + 'dvoltage_msimp_bp'))
-
+    columns = ['indegree range', 'outdegree range', 'bidegree range', 'degree range']
+    titles = ['voltage_id_bp', 'voltage_od_bp', 'voltage_bd_bp', 'voltage_d_bp']
+    for col, title in zip(columns,titles):
+        figure = plt.figure(figsize=[10,6])
+        ax = figure.add_subplot()
+        sns.boxplot(data = df, x = col, y = 'directional voltage PC', ax = ax)
+        figure.savefig(images_path / (simulations_stem_prefix + title))
+    
