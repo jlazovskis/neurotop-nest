@@ -160,6 +160,105 @@ def get_sim_id(fname, n):
         simulation_id = fname[-combinations-20:-20]
         return simulation_id
 
+# ****************************************************************************#
+# Plots
+def pairplots(df, images_path, simulations_stem_prefix):
+    sns_pairplot = sns.pairplot(df, kind='reg')
+    sns_pairplot.savefig(images_path / (simulations_stem_prefix + 'pairplot_reg'))
+    sns_pairplot = sns.pairplot(df)
+    sns_pairplot.savefig(images_path / (simulations_stem_prefix + 'pairplot'))
+    sns_pairplot = sns.pairplot(df, vars=[
+                                    'voltage PC',
+                                    'ST PC',
+                                    'directional voltage PC',
+                                    'directional ST PC',
+                                    'directionality',
+                                    'log maximal simplices',
+                                    'bidirectional edges'
+                                    ])
+    sns_pairplot.savefig(images_path / (simulations_stem_prefix + 'pairplot_mini'))
+    sns_pairplot = sns.pairplot(df, vars=[
+                                    'voltage PC',
+                                    'ST PC',
+                                    'directional voltage PC',
+                                    'directional ST PC',
+                                    'directionality',
+                                    'log maximal simplices',
+                                    'bidirectional edges'
+                                    ], kind = 'reg')
+    sns_pairplot.savefig(images_path / (simulations_stem_prefix + 'pairplot_mini_reg'))
+
+def boxplots(df, images_path, simulations_stem_prefix):
+    figure = plt.figure(figsize=[10,6])
+    ax = figure.add_subplot()
+    sns.boxplot(data = df, x = 'bidirectional edges', y = 'voltage PC', ax = ax)
+    figure.savefig(images_path / (simulations_stem_prefix + 'voltage_edges_bp'))
+    figure = plt.figure(figsize=[10,6])
+    ax = figure.add_subplot()
+    sns.boxplot(data = df, x = 'maximal simplices', y = 'voltage PC', ax = ax)
+    figure.savefig(images_path / (simulations_stem_prefix + 'voltage_msimp_bp'))
+    figure = plt.figure(figsize=[10,6])
+    ax = figure.add_subplot()
+    sns.boxplot(data = df, x = 'bidirectional edges', y = 'directional voltage PC', ax = ax)
+    figure.savefig(images_path / (simulations_stem_prefix + 'dvoltage_edges_bp'))
+    figure = plt.figure(figsize=[10,6])
+    ax = figure.add_subplot()
+    sns.boxplot(data = df, x = 'maximal simplices', y = 'directional voltage PC', ax = ax)
+    figure.savefig(images_path / (simulations_stem_prefix + 'dvoltage_msimp_bp'))
+    columns = ['indegree range', 'outdegree range', 'bidegree range', 'degree range']
+    titles = ['voltage_id_bp', 'voltage_od_bp', 'voltage_bd_bp', 'voltage_d_bp']
+    for col, title in zip(columns,titles):
+        figure = plt.figure(figsize=[10,6])
+        ax = figure.add_subplot()
+        sns.boxplot(data = df, x = col, y = 'voltage PC', ax = ax)
+        figure.savefig(images_path / (simulations_stem_prefix + title))
+
+
+def hueplots(df, images_path, simulations_stem_prefix):
+    hues = [
+        'indegree range',
+        'outdegree range',
+        'degree range',
+        'directionality',
+        'log maximal simplices'
+    ]
+
+    titles = [
+        'voltage_bedge_idhue',
+        'voltage_bedge_odhue',
+        'voltage_bedge_dhue',
+        'voltage_bedge_dirhue',
+        'voltage_bedge_mshue'
+   ]
+
+    for hue, title in zip(hues, titles):
+        figure = plt.figure(figsize=[8,6])
+        ax = figure.add_subplot()
+        sns.scatterplot(data = df, x = 'bidirectional edges', y = 'voltage PC', hue = hue, ax = ax, palette = 'Reds')
+        figure.savefig(images_path /(simulations_stem_prefix + title))
+
+    hues = [
+        'indegree range',
+        'outdegree range',
+        'degree range',
+        'directionality',
+        'bidirectional edges'
+    ]
+
+    titles = [
+        'voltage_msimp_idhue',
+        'voltage_msimp_odhue',
+        'voltage_msimp_dhue',
+        'voltage_msimp_dirhue',
+        'voltage_msimp_bedgeshue'
+    ]
+
+    for hue, title in zip(hues, titles):
+        figure = plt.figure(figsize=[8,6])
+        ax = figure.add_subplot()
+        sns.scatterplot(data = df, x = 'log maximal simplices', y = 'voltage PC', hue = hue, ax = ax, palette = 'Reds')
+        figure.savefig(images_path /(simulations_stem_prefix + title))
+
 
 if __name__ == '__main__':
     #******************************************************************************#
@@ -200,95 +299,6 @@ if __name__ == '__main__':
         df.append(get_record(volt_array, spike_trains, graph, simulation_id))
     df = pd.DataFrame(df, columns = column_names)
     # Plot results
-    sns_pairplot = sns.pairplot(df, kind='reg')
-    sns_pairplot.savefig(images_path / (simulations_stem_prefix + 'pairplot_reg'))
-    sns_pairplot = sns.pairplot(df)
-    sns_pairplot.savefig(images_path / (simulations_stem_prefix + 'pairplot'))
-    sns_pairplot = sns.pairplot(df, vars=[
-                                    'voltage PC',
-                                    'ST PC',
-                                    'directional voltage PC',
-                                    'directional ST PC',
-                                    'directionality',
-                                    'log maximal simplices',
-                                    'bidirectional edges'
-                                    ])
-    sns_pairplot.savefig(images_path / (simulations_stem_prefix + 'pairplot_mini'))
-    sns_pairplot = sns.pairplot(df, vars=[
-                                    'voltage PC',
-                                    'ST PC',
-                                    'directional voltage PC',
-                                    'directional ST PC',
-                                    'directionality',
-                                    'log maximal simplices',
-                                    'bidirectional edges'
-                                    ], kind = 'reg')
-    sns_pairplot.savefig(images_path / (simulations_stem_prefix + 'pairplot_mini_reg'))
-    figure = plt.figure(figsize=[10,6])
-    ax = figure.add_subplot()
-    sns.boxplot(data = df, x = 'bidirectional edges', y = 'voltage PC', ax = ax)
-    figure.savefig(images_path / (simulations_stem_prefix + 'voltage_edges_bp'))
-    figure = plt.figure(figsize=[10,6])
-    ax = figure.add_subplot()
-    sns.boxplot(data = df, x = 'maximal simplices', y = 'voltage PC', ax = ax)
-    figure.savefig(images_path / (simulations_stem_prefix + 'voltage_msimp_bp'))
-    figure = plt.figure(figsize=[10,6])
-    ax = figure.add_subplot()
-    sns.boxplot(data = df, x = 'bidirectional edges', y = 'directional voltage PC', ax = ax)
-    figure.savefig(images_path / (simulations_stem_prefix + 'dvoltage_edges_bp'))
-    figure = plt.figure(figsize=[10,6])
-    ax = figure.add_subplot()
-    sns.boxplot(data = df, x = 'maximal simplices', y = 'directional voltage PC', ax = ax)
-    figure.savefig(images_path / (simulations_stem_prefix + 'dvoltage_msimp_bp'))
-    columns = ['indegree range', 'outdegree range', 'bidegree range', 'degree range']
-    titles = ['voltage_id_bp', 'voltage_od_bp', 'voltage_bd_bp', 'voltage_d_bp']
-    for col, title in zip(columns,titles):
-        figure = plt.figure(figsize=[10,6])
-        ax = figure.add_subplot()
-        sns.boxplot(data = df, x = col, y = 'voltage PC', ax = ax)
-        figure.savefig(images_path / (simulations_stem_prefix + title))
-
-
-    hues = [
-        'indegree range',
-        'outdegree range',
-        'degree range',
-        'directionality',
-        'log maximal simplices'
-    ]
-
-    titles = [
-        'voltage_bedge_idhue',
-        'voltage_bedge_odhue',
-        'voltage_bedge_dhue',
-        'voltage_bedge_dirhue',
-        'voltage_bedge_mshue'
-   ]
-
-    for hue, title in zip(hues, titles):
-        figure = plt.figure(figsize=[8,6])
-        ax = figure.add_subplot()
-        sns.scatterplot(data = df, x = 'bidirectional edges', y = 'voltage PC', hue = hue, ax = ax)
-        figure.savefig(images_path /(simulations_stem_prefix + title))
-
-    hues = [
-        'indegree range',
-        'outdegree range',
-        'degree range',
-        'directionality',
-        'bidirectional edges'
-    ]
-
-    titles = [
-        'voltage_msimp_idhue',
-        'voltage_msimp_odhue',
-        'voltage_msimp_dhue',
-        'voltage_msimp_dirhue',
-        'voltage_msimp_bedgeshue'
-    ]
-
-    for hue, title in zip(hues, titles):
-        figure = plt.figure(figsize=[8,6])
-        ax = figure.add_subplot()
-        sns.scatterplot(data = df, x = 'log maximal simplices', y = 'voltage PC', hue = hue, ax = ax)
-        figure.savefig(images_path /(simulations_stem_prefix + title))
+    pairplots(df, images_path, simulations_stem_prefix)
+    boxplots(df, images_path, simulations_stem_prefix)
+    hueplots(df, images_path, simulations_stem_prefix)
