@@ -205,6 +205,12 @@ def boxplots(df, images_path, simulations_stem_prefix):
     ax = figure.add_subplot()
     sns.boxplot(data = df, x = 'maximal simplices', y = 'directional voltage PC', ax = ax)
     figure.savefig(images_path / (simulations_stem_prefix + 'dvoltage_msimp_bp'))
+    figure = plt.figure(figsize=[10,6])
+    ax1 = figure.add_subplot(2,1,1)
+    ax2 = figure.add_subplot(2,1,2)
+    sns.boxplot(data = df, x = 'bidirectional edges', y = 'directionality', ax = ax1)
+    sns.boxplot(data = df, x = 'bidirectional edges', y = 'voltage PC', ax = ax2)
+    figure.savefig(images_path / (simulations_stem_prefix + 'dir_bedges_vpc_bp'))
     columns = ['indegree range', 'outdegree range', 'bidegree range', 'degree range']
     titles = ['voltage_id_bp', 'voltage_od_bp', 'voltage_bd_bp', 'voltage_d_bp']
     for col, title in zip(columns,titles):
@@ -213,13 +219,15 @@ def boxplots(df, images_path, simulations_stem_prefix):
         sns.boxplot(data = df, x = col, y = 'voltage PC', ax = ax)
         figure.savefig(images_path / (simulations_stem_prefix + title))
 
-
 def hueplots(df, images_path, simulations_stem_prefix):
+    # Voltage PC / Bidirectional edges
     hues = [
         'indegree range',
         'outdegree range',
         'degree range',
         'directionality',
+        'normalized directionality',
+        'maximal simplices',
         'log maximal simplices'
     ]
 
@@ -228,7 +236,9 @@ def hueplots(df, images_path, simulations_stem_prefix):
         'voltage_bedge_odhue',
         'voltage_bedge_dhue',
         'voltage_bedge_dirhue',
-        'voltage_bedge_mshue'
+        'voltage_bedge_ndirhue',
+        'voltage_bedge_mshue',
+        'voltage_bedge_lmshue'
    ]
 
     for hue, title in zip(hues, titles):
@@ -237,11 +247,13 @@ def hueplots(df, images_path, simulations_stem_prefix):
         sns.scatterplot(data = df, x = 'bidirectional edges', y = 'voltage PC', hue = hue, ax = ax, palette = 'Reds')
         figure.savefig(images_path /(simulations_stem_prefix + title))
 
+    # Voltage PC / maximal simplices
     hues = [
         'indegree range',
         'outdegree range',
         'degree range',
         'directionality',
+        'normalized directionality',
         'bidirectional edges'
     ]
 
@@ -250,14 +262,98 @@ def hueplots(df, images_path, simulations_stem_prefix):
         'voltage_msimp_odhue',
         'voltage_msimp_dhue',
         'voltage_msimp_dirhue',
+        'voltage_msimp_ndir_hue',
         'voltage_msimp_bedgeshue'
     ]
 
     for hue, title in zip(hues, titles):
         figure = plt.figure(figsize=[8,6])
         ax = figure.add_subplot()
-        sns.scatterplot(data = df, x = 'log maximal simplices', y = 'voltage PC', hue = hue, ax = ax, palette = 'Reds')
+        sns.scatterplot(data = df, x = 'maximal simplices', y = 'voltage PC', hue = hue, ax = ax, palette = 'Reds')
+        ax.set_xscale('log')
         figure.savefig(images_path /(simulations_stem_prefix + title))
+
+    # Directionality / maximal simplices
+    hues = [
+        'indegree range',
+        'outdegree range',
+        'degree range',
+        'bidirectional edges',
+        'voltage PC'
+    ]
+
+    titles = [
+        'dir_msimp_idhue',
+        'dir_msimp_odhue',
+        'dir_msimp_dhue',
+        'dir_msimp_bedgehue',
+        'dir_msimp_vpchue'
+        ]
+
+    for hue, title in zip(hues, titles):
+        figure = plt.figure(figsize=[8,6])
+        ax = figure.add_subplot()
+        sns.scatterplot(data = df, x = 'maximal simplices', y = 'directionality', hue = hue, ax = ax, palette = 'Reds')
+        figure.savefig(images_path /(simulations_stem_prefix + title))
+    # Directionality / bedges
+    hues = [
+        'indegree range',
+        'outdegree range',
+        'degree range',
+        'maximal simplices',
+        'log maximal simplices',
+        'voltage PC'
+    ]
+
+    titles = [
+        'dir_bedge_idhue',
+        'dir_bedge_odhue',
+        'dir_bedge_dhue',
+        'dir_bedge_msimphue',
+        'dir_bedge_lmsimphue',
+        'dir_bedge_vpchue'
+        ]
+
+    for hue, title in zip(hues, titles):
+        figure = plt.figure(figsize=[8,6])
+        ax = figure.add_subplot()
+        sns.scatterplot(data = df, x = 'bidirectional edges', y = 'directionality', hue = hue, ax = ax, palette = 'Reds')
+        figure.savefig(images_path /(simulations_stem_prefix + title))
+
+
+def scatterplots(df, images_path, simulations_stem_prefix):
+    ys = [
+        'voltage PC',
+        'voltage PC',
+        'directional voltage PC',
+        'directionality',
+        'directionality',
+        'spike count'
+    ]
+    xs = [
+    'maximal simplices',
+    'bidirectional edges',
+    'bidirectional edges',
+    'bidirectional edges',
+    'maximal simplices',
+    'bidirectional edges'
+    ]
+
+    titles = [
+        'scatter_vpc_msimp',
+        'scatter_vpc_bedge',
+        'scatter_dvpc_bedge',
+        'scatter_dir_bedge',
+        'scatter_dir_msimp',
+        'scatter_sc_bedge'
+   ]
+
+    for x, y, title in zip(xs, ys, titles):
+        figure = plt.figure(figsize=[8,6])
+        ax = figure.add_subplot()
+        sns.scatterplot(data = df, x = x, y = y, ax = ax)
+        figure.savefig(images_path /(simulations_stem_prefix + title))
+
 
 
 if __name__ == '__main__':
@@ -281,6 +377,7 @@ if __name__ == '__main__':
     images_path = simulations_root / 'images'
     images_path.mkdir(exist_ok = True, parents = True)
     df = []
+    df_path = Path(simulations_root / (simulations_stem_prefix + 'dataframe.pkl'))
     for voltage_path in simulations_root.glob(simulations_stem_prefix + '*volts.npy'):
         nnum = args.n
         simulation_id = get_sim_id(str(voltage_path), nnum)
@@ -296,9 +393,30 @@ if __name__ == '__main__':
             plot_traces(volts, spikes, images_path / (simulations_stem_prefix + 'simple'))
         if np.all([char == '1' for char in simulation_id]):
             plot_traces(volts, spikes, images_path / (simulations_stem_prefix + 'full'))
+        if np.random.binomial(1, 0.0001):
+            plot_traces(volts, spikes, images_path / (simulations_stem_prefix + simulation_id))
         df.append(get_record(volt_array, spike_trains, graph, simulation_id))
     df = pd.DataFrame(df, columns = column_names)
+    # Normalize directionality
+    df1 = df[['bidirectional edges', 'directionality']].groupby(by='bidirectional edges').apply(lambda x: np.max(x) - np.min(x))
+    df1 = df1.rename(columns = {'directionality':'directionality range'})
+    df2 = df[['bidirectional edges', 'directionality']].groupby(by='bidirectional edges').apply(np.min)
+    df2 = df2.rename(columns = {'directionality':'directionality min'})
+    df = df.merge(df1, left_on = 'bidirectional edges', right_index = True, how = 'left')
+    df = df.drop('bidirectional edges_y', axis = 1)
+    df = df.rename(columns = {'bidirectional edges_x':'bidirectional edges'})
+    df = df.merge(df2, left_on = 'bidirectional edges', right_index = True, how = 'left')
+    df = df.drop('bidirectional edges_y', axis = 1)
+    df = df.rename(columns = {'bidirectional edges_x':'bidirectional edges'})
+    df['normalized directionality'] = (df['directionality'] - df['directionality min']) / df['directionality range']
+    df = df.drop('directionality range', axis = 1)
+    df = df.drop('directionality min', axis = 1)
+    df[['normalized directionality']] = df[['normalized directionality']].fillna(value = 1)
+    # Save
+    df.to_pickle(df_path)
+
     # Plot results
     pairplots(df, images_path, simulations_stem_prefix)
     boxplots(df, images_path, simulations_stem_prefix)
     hueplots(df, images_path, simulations_stem_prefix)
+    scatterplots(df, images_path, simulations_stem_prefix)
