@@ -1,7 +1,9 @@
-from nsimplex_sim_runner import build_matrices, triu_from_array
+from nsimplex_sim_runner import build_matrices, triu_from_array, run_simulations
 from unittest import TestCase
 from pathlib import Path
 import numpy as np
+from types import SimpleNamespace as Namespace
+
 
 class TestAdjacencyMatrices(TestCase):
     @classmethod
@@ -31,8 +33,23 @@ class TestAdjacencyMatrices(TestCase):
         self.assertTrue(np.all(triu_result == triu_from_array(array1, 4)))
 
 class TestSimulations(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        args = {'n': 3, 'root': '.', 'structure_path': 'test/3simplex', 'save_name': 'test/3simplex', 'stimulus_targets': 'all', 'stimulus_type': 'dc', 'stimulus_frequency': 1.0, 'noise_strength': 3.0, 'stimulus_strength': 40, 'stimulus_length': 90, 'stimulus_start': 5, 'time': 100, 'threads': 40}
+        run_simulations(Namespace(**args))
+
+    @classmethod
+    def tearDownClass(cls):
+        structure_teardown_path = Path("structure/test")
+        sim_teardown_path = Path("simulations/test")
+        for file in structure_teardown_path.glob("**/*"):
+            file.unlink()
+        for file in sim_teardown_path.glob("**/*"):
+            file.unlink()
+
     def test_data_save(self):
-        pass
+        sim_path = Path("simulations/test")
+        self.assertEqual(len(list(sim_path.glob("*volts.npy"))),8)
 
     def test_spikes_exist(self):
         pass
