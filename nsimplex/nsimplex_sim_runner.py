@@ -29,6 +29,7 @@ def build_matrices(path, n):
 
 def run_simulations(args):
     ids = []
+    pickle.dump(vars(args), (Path("simulations") / (args.save_name + "args.pkl")).open('wb'))
     paths = build_matrices(Path(args.structure_path), args.n)
     for path in paths:
         args.exc_adj = str(path.with_name(path.stem))
@@ -36,7 +37,6 @@ def run_simulations(args):
         combinations = int(args.n * (args.n-1) / 2)
         args.id_prefix = path.stem[-combinations:]
         ids.append(simulate(args))
-    pickle.dump(vars(args), (Path("simulations") / (args.save_name + "args.pkl")).open('wb'))
     return ids
 
 
