@@ -26,11 +26,10 @@ def simulate(args):
     ntnstatus('Configuring')
     root = args.root                                                               # Current working directory
     parallel_threads = 8                                                           # Number of threads to run NEST simulation on
-    exc = {'weight':10.0, 'delay':0.5, 'transmit':0.13}                             # Excitatory synapse parameters
-    inh = {'weight':-1.5, 'delay':0.1, 'transmit':0.13}                            # Inhibitory synapse parameters
-
+    exc = {'weight':10.0, 'delay':0.5}                             # Excitatory synapse parameters
+    inh = {'weight':-1.5, 'delay':0.1}                            # Inhibitory synapse parameters
     simulation_id = args.id_prefix + datetime.now().strftime("%s")                                  # Custom ID so files are not overwritten
-
+    nest.SetKernelStatus({'grng_seed' : args.seed})
 
     #******************************************************************************#
     # Load circuit and stimulus
@@ -71,12 +70,22 @@ def simulate(args):
 
     ntnstatus('Constructing circuit')
     network = nest.Create('izhikevich', n=nnum, params={'a':1.1})
-    for source, target in zip(*np.nonzero(adj)):
-        inh_syn = adj_inh[source][target]
-        nest.Connect((source+1,), (target+1,), conn_spec='all_to_all', syn_spec={
-            'model':'static_synapse',
-            'weight':exc['weight'] if not inh_syn else inh['weight'],
-            'delay':exc['delay'] if not inh_syn else inh['delay']})
+    if args.p_transmit == 1:
+        for source, target in zip(*np.nonzero(adj)):
+            inh_syn = adj_inh[source][target]
+            nest.Connect((source+1,), (target+1,), conn_spec='all_to_all', syn_spec={
+                'model':'static_synapse',
+                'weight':exc['weight'] if not inh_syn else inh['weight'],
+                'delay':exc['delay'] if not inh_syn else inh['delay']})
+    else:
+        for source, target in zip(*np.nonzero(adj)):
+            inh_syn = adj_inh[source][target]
+            nest.Connect((source+1,), (target+1,), conn_spec='all_to_all', syn_spec={
+                'model':'bernoulli_synapse',
+                'weight':exc['weight'] if not inh_syn else inh['weight'],
+                'delay':exc['delay'] if not inh_syn else inh['delay'],
+                'p_transmit':args.p_transmit})
+
 
 
     #******************************************************************************#
@@ -178,6 +187,8 @@ if __name__ == '__main__':
     parser.add_argument('--time', type=int, default=200, help='Length, in milliseconds, between stimuli. Must be an integer. Default is 200.')
     parser.add_argument('--threads', type=int, default=40, help='Number of parallel thread to use. Must be an integer. Default is 40.')
     parser.add_argument('--id_prefix', type=str, default='', help='Prefix for sim ID')
+    parser.add_argument('--p_transmit', type=float, default=1, help='Synapse transmission probability. Default 1.')
+    parser.add_argument('--seed', type=int, default=0, help='Simulaton seed. Default 0.')
     keyword_args = parser.parse_args()
 
     simulate(keyword_args)

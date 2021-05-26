@@ -57,5 +57,7 @@ if __name__ == '__main__':
     parser.add_argument('--stimulus_start', type=int, default=5, help='Length of stimulus.')
     parser.add_argument('--time', type=int, default=200, help='Length, in milliseconds, between stimuli. Must be an integer. Default is 200.')
     parser.add_argument('--threads', type=int, default=40, help='Number of parallel thread to use. Must be an integer. Default is 40.')
+    parser.add_argument('--p_transmit', type=float, default=1, help='Synapse transmission probability. Default 1.')
+    parser.add_argument('--seed', type=int, default=0, help='Simulaton seed. Default 0.')
     args = parser.parse_args()
     print(run_simulations(args))

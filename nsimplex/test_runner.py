@@ -37,26 +37,40 @@ class TestAdjacencyMatrices(TestCase):
 class TestSimulations(TestCase):
     @classmethod
     def setUpClass(cls):
-        args = {'n': 3, 'root': '.', 'structure_path': 'test/3simplex', 'save_name': 'test/3simplex', 'stimulus_targets': 'all', 'stimulus_type': 'dc', 'stimulus_frequency': 1.0, 'noise_strength': 0.0, 'stimulus_strength': 40, 'stimulus_length': 90, 'stimulus_start': 5, 'time': 100, 'threads': 40}
+        args = {'n': 3, 'root': '.', 'structure_path': 'test/3simplex', 'save_path': 'test/3simplex', 'stimulus_targets': 'all', 'stimulus_type': 'dc', 'stimulus_frequency': 1.0, 'noise_strength': 0.0, 'stimulus_strength': 40, 'stimulus_length': 90, 'stimulus_start': 5, 'time': 100, 'threads': 40, 'p_transmit': 1, 'seed':0}
         run_simulations(Namespace(**args))
 
-    @classmethod
-    def tearDownClass(cls):
-        structure_teardown_path = Path("structure/test")
-        sim_teardown_path = Path("simulations/test")
-        for file in structure_teardown_path.glob("**/*"):
-            file.unlink()
-        for file in sim_teardown_path.glob("**/*"):
-            file.unlink()
+    #@classmethod
+    #def tearDownClass(cls):
+    #    structure_teardown_path = Path("structure/test")
+    #    sim_teardown_path = Path("simulations/test")
+    #    for file in structure_teardown_path.glob("**/*"):
+    #        file.unlink()
+    #    for file in sim_teardown_path.glob("**/*"):
+    #        file.unlink()
 
     def test_arguments_give_different_result(self):
-        args1 = {'n': 3, 'root': '.', 'structure_path': 'test/3simplex', 'save_name': 'test/3simplex1', 'stimulus_targets': 'all', 'stimulus_type': 'dc', 'stimulus_frequency': 1.0, 'noise_strength': 0.0, 'stimulus_strength': 20, 'stimulus_length': 90, 'stimulus_start': 5, 'time': 100, 'threads': 40}
+        args1 = {'n': 3, 'root': '.', 'structure_path': 'test/3simplex', 'save_path': 'test/3simplex1', 'stimulus_targets': 'all', 'stimulus_type': 'dc', 'stimulus_frequency': 1.0, 'noise_strength': 0.0, 'stimulus_strength': 20, 'stimulus_length': 90, 'stimulus_start': 5, 'time': 100, 'threads': 40, 'p_transmit':1, 'seed':0}
         run_simulations(Namespace(**args1))
         for file1, file2 in zip(sorted(list(Path("test/3simplex1").glob("*"))), sorted(list(Path("test/3simplex").glob("*")))):
             self.assertNotEqual(md5(file1.open('rb').read()), md5(file2.open('rb').read()))
 
-    def test_reproducibility(self):
+    def test_argload(self):
         args1 = pickle.load(Path("simulations/test/3simplexargs.pkl").open('rb'))
         run_simulations(Namespace(**args1))
         for file1, file2 in zip(sorted(list(Path("test/3simplex2").glob("*"))), sorted(list(Path("test/3simplex").glob("*")))):
             self.assertEqual(md5(file1.open('rb').read()), md5(file2.open('rb').read()))
+
+    def test_seeds(self):
+        args1 = {'n': 3, 'root': '.', 'structure_path': 'test/3simplex', 'save_path': 'test/3simplexSeed0', 'stimulus_targets': 'all', 'stimulus_type': 'dc', 'stimulus_frequency': 1.0, 'noise_strength': 0.0, 'stimulus_strength': 20, 'stimulus_length': 90, 'stimulus_start': 5, 'time': 100, 'threads': 40, 'p_transmit':0.8, 'seed':0}
+        args2 = {'n': 3, 'root': '.', 'structure_path': 'test/3simplex', 'save_path': 'test/3simplexSeed1', 'stimulus_targets': 'all', 'stimulus_type': 'dc', 'stimulus_frequency': 1.0, 'noise_strength': 0.0, 'stimulus_strength': 20, 'stimulus_length': 90, 'stimulus_start': 5, 'time': 100, 'threads': 40, 'p_transmit':0.8, 'seed':1}
+        run_simulations(Namespace(**args1))
+        run_simulations(Namespace(**args2))
+        for file1, file2 in zip(sorted(list(Path("test/3simplexSeed0").glob("*"))), sorted(list(Path("test/3simplexSeed1").glob("*")))):
+            self.assertNotEqual(md5(file1.open('rb').read()), md5(file2.open('rb').read()))
+        args3 = args1
+        args3['save_path'] = "test/3simplexSeed2"
+        run_simulations(Namespace(**args3))
+        for file1, file2 in zip(sorted(list(Path("test/3simplexSeed0").glob("*"))), sorted(list(Path("test/3simplexSeed2").glob("*")))):
+            self.assertEqual(md5(file1.open('rb').read()), md5(file2.open('rb').read()))
+
