@@ -1,10 +1,11 @@
 from unittest import TestCase
-from uniformity_measures import (average_pearson, average_cosine_distance, spike_range, average_pearson_directional)
+from uniformity_measures import (average_pearson, average_cosine_distance, spike_range, average_pearson_directional,
+                                 pearson_range, pearson_matrix, spike_count)
 import numpy as np
 
 # Uniformity measures tests
 
-class AverageCorrelationTest(TestCase):
+class CorrelationTest(TestCase):
     def test_average_pearson(self):
         array1 = np.array([
             [1,2,1,2],
@@ -31,6 +32,31 @@ class AverageCorrelationTest(TestCase):
             [0, 0, 0, 0]
            ])
         self.assertAlmostEqual(average_pearson(array1), average_pearson_directional(array1, graph))
+
+    def test_pearson_matrix(self):
+        array1 = np.array([
+            [1,2,1,2],
+            [2,1,2,1],
+            [-1,-2,-1,-2],
+            [-2,-1,-2, -1]
+           ])
+        result = np.array([
+            [1., -1., -1., 1.],
+            [-1., 1., 1., -1.],
+            [-1., 1., 1., -1.],
+            [1., -1., -1., 1.]
+           ])
+        self.assertTrue(np.all(pearson_matrix(array1)==result))
+
+    def test_pearson_range(self):
+        array1 = np.array([
+            [1,2,1,2],
+            [2,1,2,1],
+            [-1,-2,-1,-2],
+            [-2,-1,-2, -1]
+           ])
+        result = 2.
+        self.assertAlmostEqual(pearson_range(array1), result)
 
 class CosineDistanceTest(TestCase):
     def test_cosine_distance(self):
