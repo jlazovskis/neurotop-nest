@@ -20,6 +20,16 @@ class TestAdjacencyMatrices(TestCase):
             matrix_from_identifier = np.triu(np.ones((4,4)), 1) + triu_part.T
             self.assertTrue(np.all(matrix_from_save == matrix_from_identifier))
 
+    def test_triu_creations(self):
+        array1 = np.array([1,2,3,4,5,6])
+        triu_result = np.array([
+                            [0, 1, 2, 3],
+                            [0, 0, 4, 5],
+                            [0, 0, 0, 6],
+                            [0, 0, 0, 0],
+                           ])
+        self.assertTrue(np.all(triu_result == triu_from_array(array1, 4)))
+
 class TestSimulations(TestCase):
     def test_data_save(self):
         pass
