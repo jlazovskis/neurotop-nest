@@ -141,8 +141,8 @@ def simulate(args):
     volts = nest.GetStatus(voltmeter)[0]['events']
 
     # Save results
-    volt_save_path = root+'/simulations/'+str(args.save_name)+'_'+simulation_id+'-volts.npy'
-    spikes_save_path = root+'/simulations/'+str(args.save_name)+'_'+simulation_id+'-spikes.npy'
+    volt_save_path = root+'/simulations/'+str(args.save_path)+'_'+simulation_id+'-volts.npy'
+    spikes_save_path = root+'/simulations/'+str(args.save_path)+'_'+simulation_id+'-spikes.npy'
     Path(spikes_save_path).parent.mkdir(parents=True, exist_ok=True)
     np.save(
         spikes_save_path,
@@ -153,7 +153,7 @@ def simulate(args):
         np.array([volts['senders'],volts['times'],volts['V_m']])
         )
 
-    ntnsubstatus('Simulation name: '+args.save_name + simulation_id)
+    ntnsubstatus('Simulation name: '+args.save_path + simulation_id)
     ntnsubstatus('Arguments used:')
     print(args)
     return simulation_id
@@ -167,7 +167,7 @@ if __name__ == '__main__':
     parser.add_argument('--root', type=str, default='.', help='Root directory for importing and exporting files')
     parser.add_argument('--exc_adj', type=str, default='3simplex/3simplex', help='Path to the circuit excitatory syn matrix, without .npy.')
     parser.add_argument('--inh_adj', type=str, default="", help='Path to the circuit inhibitory syn matrix mask, without .npy.')
-    parser.add_argument('--save_name', type=str, default='3simplex', help='Path to save the results')
+    parser.add_argument('--save_path', type=str, default='3simplex', help='Path to save the results')
     parser.add_argument('--stimulus_targets', type=str, default="all", help='Stimulus targets. \'sink\', \'source\', \'all\' are supported')
     parser.add_argument('--stimulus_type', type=str, default="poisson", help='Stimulus type. \'dc\', \'ac\', \'poisson\', \'poisson_parrot\' are supported.')
     parser.add_argument('--stimulus_frequency', type=float, default=1., help='Stimulus frequency in ac case. Unusued for other stimuli.')

@@ -29,7 +29,7 @@ def build_matrices(path, n):
 
 def run_simulations(args):
     ids = []
-    pickle.dump(vars(args), (Path("simulations") / (args.save_name + "args.pkl")).open('wb'))
+    pickle.dump(vars(args), (Path("simulations") / (args.save_path + "args.pkl")).open('wb'))
     paths = build_matrices(Path(args.structure_path), args.n)
     for path in paths:
         args.exc_adj = str(path.with_name(path.stem))
@@ -47,7 +47,7 @@ if __name__ == '__main__':
     parser.add_argument('--n', type=int, default=3, help='Dimension of the simplex')
     parser.add_argument('--root', type=str, default='.', help='Root directory for importing and exporting files')
     parser.add_argument('--structure_path', type=str, default='3simplex/3simplex', help='Path to save circuit excitatory syn matrix, without .npy.')
-    parser.add_argument('--save_name', type=str, default='3simplex/test', help='Path to save the results')
+    parser.add_argument('--save_path', type=str, default='3simplex/test', help='Path to save the results')
     parser.add_argument('--stimulus_targets', type=str, default="all", help='Stimulus targets. \'sink\', \'source\', \'all\' are supported')
     parser.add_argument('--stimulus_type', type=str, default="poisson", help='Stimulus type. \'dc\', \'ac\', \'poisson\', \'poisson_parrot\' are supported.')
     parser.add_argument('--stimulus_frequency', type=float, default=1., help='Stimulus frequency in ac case. Unusued for other stimuli.')
