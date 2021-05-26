@@ -3,6 +3,8 @@ from unittest import TestCase
 from pathlib import Path
 import numpy as np
 from types import SimpleNamespace as Namespace
+from hashlib import md5
+import pickle
 
 
 class TestAdjacencyMatrices(TestCase):
@@ -35,7 +37,7 @@ class TestAdjacencyMatrices(TestCase):
 class TestSimulations(TestCase):
     @classmethod
     def setUpClass(cls):
-        args = {'n': 3, 'root': '.', 'structure_path': 'test/3simplex', 'save_name': 'test/3simplex', 'stimulus_targets': 'all', 'stimulus_type': 'dc', 'stimulus_frequency': 1.0, 'noise_strength': 3.0, 'stimulus_strength': 40, 'stimulus_length': 90, 'stimulus_start': 5, 'time': 100, 'threads': 40}
+        args = {'n': 3, 'root': '.', 'structure_path': 'test/3simplex', 'save_name': 'test/3simplex', 'stimulus_targets': 'all', 'stimulus_type': 'dc', 'stimulus_frequency': 1.0, 'noise_strength': 0.0, 'stimulus_strength': 40, 'stimulus_length': 90, 'stimulus_start': 5, 'time': 100, 'threads': 40}
         run_simulations(Namespace(**args))
 
     @classmethod
@@ -47,12 +49,14 @@ class TestSimulations(TestCase):
         for file in sim_teardown_path.glob("**/*"):
             file.unlink()
 
-    def test_data_save(self):
-        sim_path = Path("simulations/test")
-        self.assertEqual(len(list(sim_path.glob("*volts.npy"))),8)
-
-    def test_spikes_exist(self):
-        pass
-
     def test_arguments_give_different_result(self):
-        pass
+        args1 = {'n': 3, 'root': '.', 'structure_path': 'test/3simplex', 'save_name': 'test/3simplex1', 'stimulus_targets': 'all', 'stimulus_type': 'dc', 'stimulus_frequency': 1.0, 'noise_strength': 0.0, 'stimulus_strength': 20, 'stimulus_length': 90, 'stimulus_start': 5, 'time': 100, 'threads': 40}
+        run_simulations(Namespace(**args1))
+        for file1, file2 in zip(sorted(list(Path("test/3simplex1").glob("*"))), sorted(list(Path("test/3simplex").glob("*")))):
+            self.assertNotEqual(md5(file1.open('rb').read()), md5(file2.open('rb').read()))
+
+    def test_reproducibility(self):
+        args1 = pickle.load(Path("simulations/test/3simplexargs.pkl").open('rb'))
+        run_simulations(Namespace(**args1))
+        for file1, file2 in zip(sorted(list(Path("test/3simplex2").glob("*"))), sorted(list(Path("test/3simplex").glob("*")))):
+            self.assertEqual(md5(file1.open('rb').read()), md5(file2.open('rb').read()))
