@@ -18,10 +18,12 @@ from pathlib import Path                                                    # Fo
 
 from utils.uniformity_measures import (
                           average_pearson,
+                          pearson_range,
+                          pearson_matrix,
                           average_cosine_distance,
                           average_pearson_directional,
                           spike_range,
-                          spike_count
+                          spike_count,
                      )
 from utils.structural import (
                           directionality,
@@ -73,7 +75,7 @@ def _spike_trains(spikes_dictionary, nnum, binsize, simlength):
 
 #******************************************************************************#
 # Traces plotter
-def plot_traces(volts, spikes, figname):
+def plot_traces(volts, spikes, figname, nnum):
     ntnstatus("Plotting results for " + str(figname) + " ...")
     # Style
     c_exc = (0.8353, 0.0, 0.1961)
@@ -118,6 +120,8 @@ def get_record(voltage, spike_trains, graph, id):
         id,
         average_pearson(voltage),
         average_pearson(spike_trains),
+        pearson_range(voltage),
+        pearson_range(spike_trains),
         average_cosine_distance(voltage),
         average_cosine_distance(spike_trains),
         average_pearson_directional(voltage, graph),
@@ -131,7 +135,9 @@ def get_record(voltage, spike_trains, graph, id):
         degree_range(graph),
         maximal_simplex_count(graph),
         np.log(maximal_simplex_count(graph)),
-        bidirectional_edges(graph)
+        bidirectional_edges(graph),
+        pearson_matrix(voltage),
+        pearson_matrix(spike_trains)
     ]
     return record
 
@@ -139,6 +145,8 @@ column_names = [
     'id',
     'voltage PC',
     'ST PC',
+    'voltage PC range',
+    'ST PC range',
     'voltage cosine distance',
     'ST cosine distance',
     'directional voltage PC',
@@ -152,7 +160,9 @@ column_names = [
     'degree range',
     'maximal simplices',
     'log maximal simplices',
-    'bidirectional edges'
+    'bidirectional edges',
+    'voltage PC matrix',
+    'ST PC matrix',
 ]
 
 def get_sim_id(fname, n):
@@ -163,11 +173,12 @@ def get_sim_id(fname, n):
 # ****************************************************************************#
 # Plots
 def pairplots(df, images_path, simulations_stem_prefix):
-    sns_pairplot = sns.pairplot(df, kind='reg')
+    df1 = df.drop(['voltage PC matrix', 'ST PC matrix', 'voltage PC range', 'ST PC range'], axis = 1)
+    sns_pairplot = sns.pairplot(df1, kind='reg')
     sns_pairplot.savefig(images_path / (simulations_stem_prefix + 'pairplot_reg'))
-    sns_pairplot = sns.pairplot(df)
+    sns_pairplot = sns.pairplot(df1)
     sns_pairplot.savefig(images_path / (simulations_stem_prefix + 'pairplot'))
-    sns_pairplot = sns.pairplot(df, vars=[
+    sns_pairplot = sns.pairplot(df1, vars=[
                                     'voltage PC',
                                     'ST PC',
                                     'directional voltage PC',
@@ -177,7 +188,7 @@ def pairplots(df, images_path, simulations_stem_prefix):
                                     'bidirectional edges'
                                     ])
     sns_pairplot.savefig(images_path / (simulations_stem_prefix + 'pairplot_mini'))
-    sns_pairplot = sns.pairplot(df, vars=[
+    sns_pairplot = sns.pairplot(df1, vars=[
                                     'voltage PC',
                                     'ST PC',
                                     'directional voltage PC',
@@ -390,11 +401,11 @@ if __name__ == '__main__':
         spike_trains = _spike_trains(spikes, nnum, args.binsize, args.time)
         graph = np.load(structure_path, allow_pickle = True)
         if np.all([char == '0' for char in simulation_id]):
-            plot_traces(volts, spikes, images_path / (simulations_stem_prefix + 'simple'))
+            plot_traces(volts, spikes, images_path / (simulations_stem_prefix + 'simple'), nnum)
         if np.all([char == '1' for char in simulation_id]):
-            plot_traces(volts, spikes, images_path / (simulations_stem_prefix + 'full'))
+            plot_traces(volts, spikes, images_path / (simulations_stem_prefix + 'full'), nnum)
         if np.random.binomial(1, 0.0001):
-            plot_traces(volts, spikes, images_path / (simulations_stem_prefix + simulation_id))
+            plot_traces(volts, spikes, images_path / (simulations_stem_prefix + simulation_id), nnum)
         df.append(get_record(volt_array, spike_trains, graph, simulation_id))
     df = pd.DataFrame(df, columns = column_names)
     # Normalize directionality

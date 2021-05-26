@@ -14,6 +14,18 @@ def average_pearson(traces: np.array) -> float:
     correlation_matrix = _normalize(similarity_matrix)
     return _average_triu(correlation_matrix)
 
+def pearson_range(traces: np.array) -> float:
+    traces_noavg = traces - np.expand_dims(np.mean(traces, axis = 1), -1)
+    similarity_matrix = np.dot(traces_noavg, traces_noavg.T)
+    correlation_matrix = _normalize(similarity_matrix)
+    return np.max(np.triu(correlation_matrix,1)) - np.min(np.triu(correlation_matrix,1))
+
+def pearson_matrix(traces: np.array) -> np.ndarray:
+    traces_noavg = traces - np.expand_dims(np.mean(traces, axis = 1), -1)
+    similarity_matrix = np.dot(traces_noavg, traces_noavg.T)
+    correlation_matrix = _normalize(similarity_matrix)
+    return correlation_matrix
+
 def average_cosine_distance(traces: np.array) -> float:
     similarity_matrix = np.dot(traces, traces.T)
     correlation_matrix = _normalize(similarity_matrix)
