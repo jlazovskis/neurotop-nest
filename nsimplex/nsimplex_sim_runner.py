@@ -4,6 +4,7 @@ import numpy as np
 from scipy.special import comb
 import argparse
 from pathlib import Path
+import pickle
 
 def triu_from_array(array, n):
     matrix = np.zeros((n,n)).astype(array.dtype)
@@ -35,6 +36,7 @@ def run_simulations(args):
         combinations = int(args.n * (args.n-1) / 2)
         args.id_prefix = path.stem[-combinations:]
         ids.append(simulate(args))
+    pickle.dump(vars(args), (Path("simulations") / (args.save_name + "args.pkl")).open('wb'))
     return ids
 
 
@@ -45,7 +47,7 @@ if __name__ == '__main__':
     parser.add_argument('--n', type=int, default=3, help='Dimension of the simplex')
     parser.add_argument('--root', type=str, default='.', help='Root directory for importing and exporting files')
     parser.add_argument('--structure_path', type=str, default='3simplex/3simplex', help='Path to save circuit excitatory syn matrix, without .npy.')
-    parser.add_argument('--save_name', type=str, default='3simplex', help='Path to save the results')
+    parser.add_argument('--save_name', type=str, default='3simplex/test', help='Path to save the results')
     parser.add_argument('--stimulus_targets', type=str, default="all", help='Stimulus targets. \'sink\', \'source\', \'all\' are supported')
     parser.add_argument('--stimulus_type', type=str, default="poisson", help='Stimulus type. \'dc\', \'ac\', \'poisson\', \'poisson_parrot\' are supported.')
     parser.add_argument('--stimulus_frequency', type=float, default=1., help='Stimulus frequency in ac case. Unusued for other stimuli.')
