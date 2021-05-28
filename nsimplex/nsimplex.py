@@ -29,7 +29,6 @@ def simulate(args):
     exc = {'weight':10.0, 'delay':0.5}                             # Excitatory synapse parameters
     inh = {'weight':-1.5, 'delay':0.1}                            # Inhibitory synapse parameters
     simulation_id = args.id_prefix + datetime.now().strftime("%s")                                  # Custom ID so files are not overwritten
-    nest.SetKernelStatus({'grng_seed' : args.seed})
 
     #******************************************************************************#
     # Load circuit and stimulus
@@ -63,6 +62,10 @@ def simulate(args):
     # Build the circuit
     nest.ResetKernel()                                                             # Reset nest
     nest.SetKernelStatus({"local_num_threads": args.threads})                      # Run on many threads
+    n_procs = nest.GetKernelStatus("total_num_virtual_procs")
+    nest.SetKernelStatus({"grng_seed": args.seed * (n_procs + 1)})
+    nest.SetKernelStatus({"rng_seeds" : list(range(args.seed * (n_procs + 1) + 1, (args.seed + 1)*(n_procs + 1)))})
+
 
     snum = sum(sum(adj))                                                           # Number of synapses in circuit
     for source, target in []:
@@ -141,7 +144,9 @@ def simulate(args):
             for target in fibre:
                 nest.Connect((stimuli[fibre_index],),(target+1,))
 
-
+    if args.noise_strength > 0:
+        noise = nest.Create('noise_generator', params = {'mean':0., 'std':args.noise_strength})
+        nest.Connect(noise, network)
     #******************************************************************************#
     # Run a simulation
     ntnstatus("Running simulation of "+str(args.time)+"ms")

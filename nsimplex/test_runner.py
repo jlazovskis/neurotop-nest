@@ -34,43 +34,93 @@ class TestAdjacencyMatrices(TestCase):
                            ])
         self.assertTrue(np.all(triu_result == triu_from_array(array1, 4)))
 
+def get_voltage_files(save_path):
+    return sorted(list((Path('simulations') / save_path.parent).glob(save_path.name + "*volts.npy")))
+
+def load_volts(voltage_path):
+    volts_array = np.load(voltage_path, allow_pickle=True)
+    volts = {'senders':volts_array[0], 'times':volts_array[1], 'V_m':volts_array[2]}
+    return volts
+
+def _volt_array(volt_dictionary, nnum):
+    array = []
+    for j in range(nnum):
+        v_ind = np.where(volt_dictionary['senders'] == j+1)[0]
+        array.append(volt_dictionary['V_m'][v_ind])
+    return np.stack(array)
+
+def compare_voltage_traces(args1, args2):
+    vt1 = get_voltage_files(Path(args1['save_path']))
+    vt2 = get_voltage_files(Path(args2['save_path']))
+    if not len(vt1) or not len(vt2):
+        raise FileNotFoundError
+    for file1, file2 in zip(vt1, vt2):
+        print(file1)
+        print(file2)
+        if not np.all(_volt_array(load_volts(file1), args1['n']) == _volt_array(load_volts(file2), args2['n'])):
+            return False
+    return True
+
+
 class TestSimulations(TestCase):
     @classmethod
-    def setUpClass(cls):
-        args = {'n': 3, 'root': '.', 'structure_path': 'test/3simplex', 'save_path': 'test/3simplex', 'stimulus_targets': 'all', 'stimulus_type': 'dc', 'stimulus_frequency': 1.0, 'noise_strength': 0.0, 'stimulus_strength': 40, 'stimulus_length': 90, 'stimulus_start': 5, 'time': 100, 'threads': 40, 'p_transmit': 1, 'seed':0}
-        run_simulations(Namespace(**args))
-
-    #@classmethod
-    #def tearDownClass(cls):
-    #    structure_teardown_path = Path("structure/test")
-    #    sim_teardown_path = Path("simulations/test")
-    #    for file in structure_teardown_path.glob("**/*"):
-    #        file.unlink()
-    #    for file in sim_teardown_path.glob("**/*"):
-    #        file.unlink()
+    def tearDownClass(cls):
+        structure_teardown_path = Path("structure/test")
+        sim_teardown_path = Path("simulations/test")
+        for file in structure_teardown_path.glob("**/*"):
+            file.unlink()
+        for file in sim_teardown_path.glob("**/*"):
+            file.unlink()
 
     def test_arguments_give_different_result(self):
-        args1 = {'n': 3, 'root': '.', 'structure_path': 'test/3simplex', 'save_path': 'test/3simplex1', 'stimulus_targets': 'all', 'stimulus_type': 'dc', 'stimulus_frequency': 1.0, 'noise_strength': 0.0, 'stimulus_strength': 20, 'stimulus_length': 90, 'stimulus_start': 5, 'time': 100, 'threads': 40, 'p_transmit':1, 'seed':0}
-        run_simulations(Namespace(**args1))
-        for file1, file2 in zip(sorted(list(Path("test/3simplex1").glob("*"))), sorted(list(Path("test/3simplex").glob("*")))):
-            self.assertNotEqual(md5(file1.open('rb').read()), md5(file2.open('rb').read()))
-
-    def test_argload(self):
-        args1 = pickle.load(Path("simulations/test/3simplexargs.pkl").open('rb'))
-        run_simulations(Namespace(**args1))
-        for file1, file2 in zip(sorted(list(Path("test/3simplex2").glob("*"))), sorted(list(Path("test/3simplex").glob("*")))):
-            self.assertEqual(md5(file1.open('rb').read()), md5(file2.open('rb').read()))
-
-    def test_seeds(self):
-        args1 = {'n': 3, 'root': '.', 'structure_path': 'test/3simplex', 'save_path': 'test/3simplexSeed0', 'stimulus_targets': 'all', 'stimulus_type': 'dc', 'stimulus_frequency': 1.0, 'noise_strength': 0.0, 'stimulus_strength': 20, 'stimulus_length': 90, 'stimulus_start': 5, 'time': 100, 'threads': 40, 'p_transmit':0.8, 'seed':0}
-        args2 = {'n': 3, 'root': '.', 'structure_path': 'test/3simplex', 'save_path': 'test/3simplexSeed1', 'stimulus_targets': 'all', 'stimulus_type': 'dc', 'stimulus_frequency': 1.0, 'noise_strength': 0.0, 'stimulus_strength': 20, 'stimulus_length': 90, 'stimulus_start': 5, 'time': 100, 'threads': 40, 'p_transmit':0.8, 'seed':1}
+        args1 = {'n': 3, 'root': '.', 'structure_path': 'test/3simplex', 'save_path': 'test/3simplexA', 'stimulus_targets': 'all', 'stimulus_type': 'dc', 'stimulus_frequency': 1.0, 'noise_strength': 0.0, 'stimulus_strength': 40, 'stimulus_length': 90, 'stimulus_start': 5, 'time': 100, 'threads': 40, 'p_transmit': 1, 'seed':0}
+        args2 = {'n': 3, 'root': '.', 'structure_path': 'test/3simplex', 'save_path': 'test/3simplexB', 'stimulus_targets': 'all', 'stimulus_type': 'dc', 'stimulus_frequency': 1.0, 'noise_strength': 0.0, 'stimulus_strength': 20, 'stimulus_length': 90, 'stimulus_start': 5, 'time': 100, 'threads': 40, 'p_transmit':1, 'seed':1}
         run_simulations(Namespace(**args1))
         run_simulations(Namespace(**args2))
-        for file1, file2 in zip(sorted(list(Path("test/3simplexSeed0").glob("*"))), sorted(list(Path("test/3simplexSeed1").glob("*")))):
-            self.assertNotEqual(md5(file1.open('rb').read()), md5(file2.open('rb').read()))
-        args3 = args1
-        args3['save_path'] = "test/3simplexSeed2"
-        run_simulations(Namespace(**args3))
-        for file1, file2 in zip(sorted(list(Path("test/3simplexSeed0").glob("*"))), sorted(list(Path("test/3simplexSeed2").glob("*")))):
-            self.assertEqual(md5(file1.open('rb').read()), md5(file2.open('rb').read()))
+        self.assertFalse(compare_voltage_traces(args1, args2))
 
+    def test_argload(self):
+        args1 = {'n': 3, 'root': '.', 'structure_path': 'test/3simplex', 'save_path': 'test/3simplexA', 'stimulus_targets': 'all', 'stimulus_type': 'dc', 'stimulus_frequency': 1.0, 'noise_strength': 0.0, 'stimulus_strength': 40, 'stimulus_length': 90, 'stimulus_start': 5, 'time': 100, 'threads': 40, 'p_transmit': 1, 'seed':0}
+        run_simulations(Namespace(**args1))
+        args2 = pickle.load(Path("simulations/test/3simplexAargs.pkl").open('rb'))
+        args2['save_path'] = 'test/3simplexC'
+        run_simulations(Namespace(**args2))
+        self.assertTrue(compare_voltage_traces(args1, args2))
+
+    def test_seeds(self):
+        args1 = {'n': 3, 'root': '.', 'structure_path': 'test/3simplex', 'save_path': 'test/3simplexSeedA', 'stimulus_targets': 'all', 'stimulus_type': 'dc', 'stimulus_frequency': 1.0, 'noise_strength': 0.0, 'stimulus_strength': 20, 'stimulus_length': 90, 'stimulus_start': 5, 'time': 100, 'threads': 40, 'p_transmit':0.8, 'seed':1}
+        args2 = {'n': 3, 'root': '.', 'structure_path': 'test/3simplex', 'save_path': 'test/3simplexSeedB', 'stimulus_targets': 'all', 'stimulus_type': 'dc', 'stimulus_frequency': 1.0, 'noise_strength': 0.0, 'stimulus_strength': 20, 'stimulus_length': 90, 'stimulus_start': 5, 'time': 100, 'threads': 40, 'p_transmit':0.8, 'seed':2}
+        run_simulations(Namespace(**args1))
+        run_simulations(Namespace(**args2))
+        args3 = args1.copy()
+        args3['save_path'] = "test/3simplexSeedC"
+        run_simulations(Namespace(**args3))
+        self.assertTrue(compare_voltage_traces(args1,args3))
+        self.assertFalse(compare_voltage_traces(args1, args2))
+
+    def test_noise(self):
+        args1 = {'n': 3, 'root': '.', 'structure_path': 'test/3simplex', 'save_path': 'test/3simplexNoiseA', 'stimulus_targets': 'all', 'stimulus_type': 'dc', 'stimulus_frequency': 1.0, 'noise_strength': 1.0, 'stimulus_strength': 20, 'stimulus_length': 90, 'stimulus_start': 5, 'time': 100, 'threads': 40, 'p_transmit':1, 'seed':1}
+        args2 = args1.copy()
+        args2['seed'] = 2
+        args2['save_path'] = 'test/3simplexNoiseB'
+        run_simulations(Namespace(**args1))
+        run_simulations(Namespace(**args2))
+        self.assertFalse(compare_voltage_traces(args1, args2))
+
+    def test_poisson_st(self):
+        args1 = {'n': 3, 'root': '.', 'structure_path': 'test/3simplex', 'save_path': 'test/3simplexPPA', 'stimulus_targets': 'all', 'stimulus_type': 'poisson_parrot', 'stimulus_frequency': 1.0, 'noise_strength': 0.0, 'stimulus_strength': 10000, 'stimulus_length': 90, 'stimulus_start': 5, 'time': 100, 'threads': 40, 'p_transmit':1, 'seed':1}
+        args2 = args1.copy()
+        args2['seed'] = 2
+        args2['save_path'] = 'test/3simplexPPB'
+        run_simulations(Namespace(**args1))
+        run_simulations(Namespace(**args2))
+        self.assertFalse(compare_voltage_traces(args1, args2))
+
+    def test_bernoulli(self):
+        args1 = {'n': 3, 'root': '.', 'structure_path': 'test/3simplex', 'save_path': 'test/3simplexBSA', 'stimulus_targets': 'all', 'stimulus_type': 'dc', 'stimulus_frequency': 1.0, 'noise_strength': 0.0, 'stimulus_strength': 10, 'stimulus_length': 90, 'stimulus_start': 5, 'time': 100, 'threads': 40, 'p_transmit':0.8, 'seed':1}
+        args2 = args1.copy()
+        args2['seed'] = 2
+        args2['save_path'] = 'test/3simplexBSB'
+        run_simulations(Namespace(**args1))
+        run_simulations(Namespace(**args2))
+        self.assertFalse(compare_voltage_traces(args1, args2))
