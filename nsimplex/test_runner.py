@@ -1,7 +1,8 @@
-from nsimplex_sim_runner import build_matrices, triu_from_array, run_simulations
+from nsimplex_sim_runner import build_matrices, triu_from_array, run_simulations, column_names
 from unittest import TestCase
 from pathlib import Path
 import numpy as np
+import pandas as pd
 from types import SimpleNamespace as Namespace
 from hashlib import md5
 import pickle
@@ -73,14 +74,14 @@ class TestSimulations(TestCase):
             file.unlink()
 
     def test_arguments_give_different_result(self):
-        args1 = {'n': 3, 'root': '.', 'structure_path': 'test/3simplex', 'save_path': 'test/3simplexA', 'stimulus_targets': 'all', 'stimulus_type': 'dc', 'stimulus_frequency': 1.0, 'noise_strength': 0.0, 'stimulus_strength': 40, 'stimulus_length': 90, 'stimulus_start': 5, 'time': 100, 'threads': 40, 'p_transmit': 1, 'seed':0}
-        args2 = {'n': 3, 'root': '.', 'structure_path': 'test/3simplex', 'save_path': 'test/3simplexB', 'stimulus_targets': 'all', 'stimulus_type': 'dc', 'stimulus_frequency': 1.0, 'noise_strength': 0.0, 'stimulus_strength': 20, 'stimulus_length': 90, 'stimulus_start': 5, 'time': 100, 'threads': 40, 'p_transmit':1, 'seed':1}
+        args1 = {'n': 3, 'root': '.', 'structure_path': 'test/3simplex', 'save_path': 'test/3simplexA', 'stimulus_targets': 'all', 'stimulus_type': 'dc', 'stimulus_frequency': 1.0, 'noise_strength': 0.0, 'stimulus_strength': 40, 'stimulus_length': 90, 'stimulus_start': 5, 'time': 100, 'threads': 40, 'p_transmit': 1, 'seed':0, 'binsize':3}
+        args2 = {'n': 3, 'root': '.', 'structure_path': 'test/3simplex', 'save_path': 'test/3simplexB', 'stimulus_targets': 'all', 'stimulus_type': 'dc', 'stimulus_frequency': 1.0, 'noise_strength': 0.0, 'stimulus_strength': 20, 'stimulus_length': 90, 'stimulus_start': 5, 'time': 100, 'threads': 40, 'p_transmit':1, 'seed':1, 'binsize':3}
         run_simulations(Namespace(**args1))
         run_simulations(Namespace(**args2))
         self.assertFalse(compare_voltage_traces(args1, args2))
 
     def test_argload(self):
-        args1 = {'n': 3, 'root': '.', 'structure_path': 'test/3simplex', 'save_path': 'test/3simplexA', 'stimulus_targets': 'all', 'stimulus_type': 'dc', 'stimulus_frequency': 1.0, 'noise_strength': 0.0, 'stimulus_strength': 40, 'stimulus_length': 90, 'stimulus_start': 5, 'time': 100, 'threads': 40, 'p_transmit': 1, 'seed':0}
+        args1 = {'n': 3, 'root': '.', 'structure_path': 'test/3simplex', 'save_path': 'test/3simplexA', 'stimulus_targets': 'all', 'stimulus_type': 'dc', 'stimulus_frequency': 1.0, 'noise_strength': 0.0, 'stimulus_strength': 40, 'stimulus_length': 90, 'stimulus_start': 5, 'time': 100, 'threads': 40, 'p_transmit': 1, 'seed':0, 'binsize':3}
         run_simulations(Namespace(**args1))
         args2 = pickle.load(Path("simulations/test/3simplexAargs.pkl").open('rb'))
         args2['save_path'] = 'test/3simplexC'
@@ -88,8 +89,8 @@ class TestSimulations(TestCase):
         self.assertTrue(compare_voltage_traces(args1, args2))
 
     def test_seeds(self):
-        args1 = {'n': 3, 'root': '.', 'structure_path': 'test/3simplex', 'save_path': 'test/3simplexSeedA', 'stimulus_targets': 'all', 'stimulus_type': 'dc', 'stimulus_frequency': 1.0, 'noise_strength': 0.0, 'stimulus_strength': 20, 'stimulus_length': 90, 'stimulus_start': 5, 'time': 100, 'threads': 40, 'p_transmit':0.8, 'seed':1}
-        args2 = {'n': 3, 'root': '.', 'structure_path': 'test/3simplex', 'save_path': 'test/3simplexSeedB', 'stimulus_targets': 'all', 'stimulus_type': 'dc', 'stimulus_frequency': 1.0, 'noise_strength': 0.0, 'stimulus_strength': 20, 'stimulus_length': 90, 'stimulus_start': 5, 'time': 100, 'threads': 40, 'p_transmit':0.8, 'seed':2}
+        args1 = {'n': 3, 'root': '.', 'structure_path': 'test/3simplex', 'save_path': 'test/3simplexSeedA', 'stimulus_targets': 'all', 'stimulus_type': 'dc', 'stimulus_frequency': 1.0, 'noise_strength': 0.0, 'stimulus_strength': 20, 'stimulus_length': 90, 'stimulus_start': 5, 'time': 100, 'threads': 40, 'p_transmit':0.8, 'seed':1, 'binsize':3}
+        args2 = {'n': 3, 'root': '.', 'structure_path': 'test/3simplex', 'save_path': 'test/3simplexSeedB', 'stimulus_targets': 'all', 'stimulus_type': 'dc', 'stimulus_frequency': 1.0, 'noise_strength': 0.0, 'stimulus_strength': 20, 'stimulus_length': 90, 'stimulus_start': 5, 'time': 100, 'threads': 40, 'p_transmit':0.8, 'seed':2, 'binsize':3}
         run_simulations(Namespace(**args1))
         run_simulations(Namespace(**args2))
         args3 = args1.copy()
@@ -99,7 +100,7 @@ class TestSimulations(TestCase):
         self.assertFalse(compare_voltage_traces(args1, args2))
 
     def test_noise(self):
-        args1 = {'n': 3, 'root': '.', 'structure_path': 'test/3simplex', 'save_path': 'test/3simplexNoiseA', 'stimulus_targets': 'all', 'stimulus_type': 'dc', 'stimulus_frequency': 1.0, 'noise_strength': 1.0, 'stimulus_strength': 20, 'stimulus_length': 90, 'stimulus_start': 5, 'time': 100, 'threads': 40, 'p_transmit':1, 'seed':1}
+        args1 = {'n': 3, 'root': '.', 'structure_path': 'test/3simplex', 'save_path': 'test/3simplexNoiseA', 'stimulus_targets': 'all', 'stimulus_type': 'dc', 'stimulus_frequency': 1.0, 'noise_strength': 1.0, 'stimulus_strength': 20, 'stimulus_length': 90, 'stimulus_start': 5, 'time': 100, 'threads': 40, 'p_transmit':1, 'seed':1, 'binsize':3}
         args2 = args1.copy()
         args2['seed'] = 2
         args2['save_path'] = 'test/3simplexNoiseB'
@@ -108,7 +109,7 @@ class TestSimulations(TestCase):
         self.assertFalse(compare_voltage_traces(args1, args2))
 
     def test_poisson_st(self):
-        args1 = {'n': 3, 'root': '.', 'structure_path': 'test/3simplex', 'save_path': 'test/3simplexPPA', 'stimulus_targets': 'all', 'stimulus_type': 'poisson_parrot', 'stimulus_frequency': 1.0, 'noise_strength': 0.0, 'stimulus_strength': 10000, 'stimulus_length': 90, 'stimulus_start': 5, 'time': 100, 'threads': 40, 'p_transmit':1, 'seed':1}
+        args1 = {'n': 3, 'root': '.', 'structure_path': 'test/3simplex', 'save_path': 'test/3simplexPPA', 'stimulus_targets': 'all', 'stimulus_type': 'poisson_parrot', 'stimulus_frequency': 1.0, 'noise_strength': 0.0, 'stimulus_strength': 10000, 'stimulus_length': 90, 'stimulus_start': 5, 'time': 100, 'threads': 40, 'p_transmit':1, 'seed':1, 'binsize':3}
         args2 = args1.copy()
         args2['seed'] = 2
         args2['save_path'] = 'test/3simplexPPB'
@@ -117,10 +118,17 @@ class TestSimulations(TestCase):
         self.assertFalse(compare_voltage_traces(args1, args2))
 
     def test_bernoulli(self):
-        args1 = {'n': 3, 'root': '.', 'structure_path': 'test/3simplex', 'save_path': 'test/3simplexBSA', 'stimulus_targets': 'all', 'stimulus_type': 'dc', 'stimulus_frequency': 1.0, 'noise_strength': 0.0, 'stimulus_strength': 10, 'stimulus_length': 90, 'stimulus_start': 5, 'time': 100, 'threads': 40, 'p_transmit':0.8, 'seed':1}
+        args1 = {'n': 3, 'root': '.', 'structure_path': 'test/3simplex', 'save_path': 'test/3simplexBSA', 'stimulus_targets': 'all', 'stimulus_type': 'dc', 'stimulus_frequency': 1.0, 'noise_strength': 0.0, 'stimulus_strength': 10, 'stimulus_length': 90, 'stimulus_start': 5, 'time': 100, 'threads': 40, 'p_transmit':0.8, 'seed':1, 'binsize':3}
         args2 = args1.copy()
         args2['seed'] = 2
         args2['save_path'] = 'test/3simplexBSB'
         run_simulations(Namespace(**args1))
         run_simulations(Namespace(**args2))
         self.assertFalse(compare_voltage_traces(args1, args2))
+
+    def test_dataframe(self):
+        args1 = {'n': 3, 'root': '.', 'structure_path': 'test/3simplex', 'save_path': 'test/3simplexDFA', 'stimulus_targets': 'all', 'stimulus_type': 'dc', 'stimulus_frequency': 1.0, 'noise_strength': 0.0, 'stimulus_strength': 10, 'stimulus_length': 90, 'stimulus_start': 5, 'time': 100, 'threads': 40, 'p_transmit':0.8, 'seed':1, 'binsize':3}
+        df1 = run_simulations(Namespace(**args1))
+        self.assertEqual(df1.shape, (8,24))
+        df2 = pd.read_pickle(Path('simulations') / (args1['save_path'] + 'dataframe.pkl'))
+        self.assertTrue(df2.equals(df1))
