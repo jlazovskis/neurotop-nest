@@ -187,6 +187,8 @@ def build_df(args):
 
 def run_simulations(args):
     ids = []
+    save_parent = (Path("simulations") / args.save_path).parent
+    save_parent.mkdir(exist_ok = True, parents = True)
     pickle.dump(vars(args), (Path("simulations") / (args.save_path + "args.pkl")).open('wb'))
     paths = build_matrices(Path(args.structure_path), args.n)
     for path in paths:
@@ -219,3 +221,4 @@ if __name__ == '__main__':
     parser.add_argument('--seed', type=int, default=0, help='Simulaton seed. Default 0.')
     parser.add_argument('--binsize', type=int, default=5, help='Spike train bin size.')
     args = parser.parse_args()
+    run_simulations(args)
