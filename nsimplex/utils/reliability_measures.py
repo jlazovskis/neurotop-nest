@@ -15,7 +15,7 @@ um_spec.loader.exec_module(um)
 #############################
 
 def gaussian_reliability(spike_trains_list: List[np.ndarray], gaussian_variance: float):
-    convolved_signals = np.stack([custom_gaussian_filter1d(spike_trains.astype(float), gaussian_variance) for spike_trains in spike_trains_list], axis = 0)
+    convolved_signals = np.stack([gaussian_filter1d(spike_trains.astype(float), gaussian_variance) for spike_trains in spike_trains_list], axis = 0)
     result = [um.average_cosine_distance(convolved_signals[:,i,:]) for i in range(convolved_signals.shape[1])]
     return np.array(result)
 
