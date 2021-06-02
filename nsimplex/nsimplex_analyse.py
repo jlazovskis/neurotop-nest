@@ -67,7 +67,7 @@ def _spike_trains(spikes_dictionary, nnum, binsize, simlength):
     strains = []
     for j in range(nnum):
         sp_ind = np.where(spikes_dictionary['senders'] == j+1)[0]
-        times = np.array(spikes['times'][sp_ind])
+        times = np.array(spikes_dictionary['times'][sp_ind])
         st = [np.count_nonzero(np.logical_and(times < node + binsize, times > node))
                   for node in list(range(0, simlength, binsize))[:-1]]
         strains.append(st)
@@ -382,52 +382,27 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    # Dataset generation and simple voltage traces
+    # Sample voltage traces
     simulations_root = Path(args.root + '/simulations/' + args.save_path).parent
     simulations_stem_prefix = Path(args.save_path).stem
     images_path = simulations_root / 'images'
     images_path.mkdir(exist_ok = True, parents = True)
-    df = []
-    df_path = Path(simulations_root / (simulations_stem_prefix + 'dataframe.pkl'))
     for voltage_path in simulations_root.glob(simulations_stem_prefix + '*volts.npy'):
         nnum = args.n
         simulation_id = get_sim_id(str(voltage_path), nnum)
-        ntnstatus('Loading results of simulation '+simulation_id)
-        spike_path = voltage_path.with_name(voltage_path.name.replace('volts','spikes'))
-        structure_path = 'structure/' + args.structure_path + simulation_id + '.npy'
         volts = load_volts(voltage_path)
-        volt_array = _volt_array(volts, nnum)
+        spike_path = voltage_path.with_name(voltage_path.name.replace('volts','spikes'))
         spikes = load_spikes(spike_path)
-        spike_trains = _spike_trains(spikes, nnum, args.binsize, args.time)
-        graph = np.load(structure_path, allow_pickle = True)
         if np.all([char == '0' for char in simulation_id]):
             plot_traces(volts, spikes, images_path / (simulations_stem_prefix + 'simple'), nnum)
         if np.all([char == '1' for char in simulation_id]):
             plot_traces(volts, spikes, images_path / (simulations_stem_prefix + 'full'), nnum)
-        if np.random.binomial(1, 0.0001):
+        if np.random.binomial(1, 0.001):
             plot_traces(volts, spikes, images_path / (simulations_stem_prefix + simulation_id), nnum)
-        df.append(get_record(volt_array, spike_trains, graph, simulation_id))
-    df = pd.DataFrame(df, columns = column_names)
-    # Normalize directionality
-    df1 = df[['bidirectional edges', 'directionality']].groupby(by='bidirectional edges').apply(lambda x: np.max(x) - np.min(x))
-    df1 = df1.rename(columns = {'directionality':'directionality range'})
-    df2 = df[['bidirectional edges', 'directionality']].groupby(by='bidirectional edges').apply(np.min)
-    df2 = df2.rename(columns = {'directionality':'directionality min'})
-    df = df.merge(df1, left_on = 'bidirectional edges', right_index = True, how = 'left')
-    df = df.drop('bidirectional edges_y', axis = 1)
-    df = df.rename(columns = {'bidirectional edges_x':'bidirectional edges'})
-    df = df.merge(df2, left_on = 'bidirectional edges', right_index = True, how = 'left')
-    df = df.drop('bidirectional edges_y', axis = 1)
-    df = df.rename(columns = {'bidirectional edges_x':'bidirectional edges'})
-    df['normalized directionality'] = (df['directionality'] - df['directionality min']) / df['directionality range']
-    df = df.drop('directionality range', axis = 1)
-    df = df.drop('directionality min', axis = 1)
-    df[['normalized directionality']] = df[['normalized directionality']].fillna(value = 1)
-    # Save
-    df.to_pickle(df_path)
-
     # Plot results
-    pairplots(df, images_path, simulations_stem_prefix)
-    boxplots(df, images_path, simulations_stem_prefix)
-    hueplots(df, images_path, simulations_stem_prefix)
-    scatterplots(df, images_path, simulations_stem_prefix)
+    df_path = Path(simulations_root / (simulations_stem_prefix + 'dataframe.pkl'))
+    df = pd.read_pickle(df_path)
+    #pairplots(df, images_path, simulations_stem_prefix)
+    #boxplots(df, images_path, simulations_stem_prefix)
+    #hueplots(df, images_path, simulations_stem_prefix)
+    #scatterplots(df, images_path, simulations_stem_prefix)
