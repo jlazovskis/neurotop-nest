@@ -44,7 +44,10 @@ def average_pearson_directional(traces: np.array, graph: np.array) -> float:
     correlation_matrix = _normalize(similarity_matrix)
     mask = np.logical_and(graph, np.logical_not(np.multiply(graph, graph.T)))
     samples = correlation_matrix[np.where(mask)]
-    return np.mean(samples)
+    if len(samples):
+        return np.mean(samples)
+    else:
+        return np.nan
 
 def average_mutual_information():
     raise NotImplementedError

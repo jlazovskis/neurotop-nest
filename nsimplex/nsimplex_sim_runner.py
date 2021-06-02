@@ -114,9 +114,9 @@ column_names = [
 
 
 def get_sim_id(fname, n):
-        combinations = int(n*(n-1)/2)
-        simulation_id = fname[-combinations-20:-20]
-        return simulation_id
+    combinations = int(n*(n-1)/2)
+    simulation_id = fname[-combinations-20:-20]
+    return simulation_id
 
 def load_volts(voltage_path):
     volts_array = np.load(voltage_path, allow_pickle=True)
