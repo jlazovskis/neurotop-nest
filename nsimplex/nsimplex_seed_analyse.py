@@ -53,7 +53,7 @@ if __name__ == '__main__':
     images_path = simulations_root / 'images'
     images_path.mkdir(exist_ok = True, parents = True)
     # Plot results
-    df = pd.concat([pd.read_pickle(df_path) for df_path in simulations_root.glob("**[0-9]dataframe.pkl") if "reliability_dataframe" not in str(df_path)], ignore_index=True)
+    df = pd.concat([pd.read_pickle(df_path) for df_path in simulations_root.glob("**/*dataframe.pkl") if "reliability_dataframe" not in str(df_path)], ignore_index=True)
     df = df.drop_duplicates(subset = 'path')
     def compute_reliabilities(path_df):
         gaussian_sts = []
@@ -64,4 +64,4 @@ if __name__ == '__main__':
             delayed_sts.append(_spike_trains(load_spikes(spike_path), args.n, args.gaussian_binsize, args.time))
         return gaussian_reliability(gaussian_sts, args.gaussian_variance), delayed_reliability(delayed_sts, args.shift)
     df = df.groupby('id').apply(compute_reliabilities)
-    df.to_pickle(simulations_root / (simulations_stem_prefix + "reliability_dataframe_v2_02.pkl"))
+    df.to_pickle(simulations_root / (simulations_stem_prefix + "reliability_dataframe_gstd"+str(args.gaussian_variance) + "shift" + str(args.shift) + ".pkl"))
