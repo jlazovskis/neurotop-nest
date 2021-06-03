@@ -69,7 +69,7 @@ exc_vert = [np.random.choice([0, 1], p=[args.inh_prop, 1-args.inh_prop]) for i i
 
 
 #******************************************************************************#
-#Design the stimulus to  be inserted into the drosophila circuit
+#Design the stimulus to be inserted into the circuit
 
 ntnstatus('Creating stimulus')
 fibres = []
@@ -77,6 +77,7 @@ for i in range(args.number_stimuli):
     fibres.append(random.sample(range(nnum),int(nnum*args.size_stimuli)))
 
 stim_order = [i for i in range(args.number_stimuli) for j in range(args.stimulus_reps)]
+random.shuffle(stim_order)
 stim_start = [int(random.random()*10) for i in range(args.number_stimuli*args.stimulus_reps)]  # Start each stimulus at somepoint withing the first 10ms
 # each element of firing_pattern has the form: (stim number, stim start time, stime end time, stim strength between 1 and 2)
 firing_pattern = [(stim_order[i],stim_start[i],stim_start[i]+args.stimulus_length,random.uniform(1,2)) for i in range(len(stim_order))]
