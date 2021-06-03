@@ -366,7 +366,6 @@ def scatterplots(df, images_path, simulations_stem_prefix):
         figure.savefig(images_path /(simulations_stem_prefix + title))
 
 
-
 if __name__ == '__main__':
     #******************************************************************************#
     # Read arguments
@@ -382,27 +381,10 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    # Sample voltage traces
-    simulations_root = Path(args.root + '/simulations/' + args.save_path).parent
-    simulations_stem_prefix = Path(args.save_path).stem
-    images_path = simulations_root / 'images'
-    images_path.mkdir(exist_ok = True, parents = True)
-    for voltage_path in simulations_root.glob(simulations_stem_prefix + '*volts.npy'):
-        nnum = args.n
-        simulation_id = get_sim_id(str(voltage_path), nnum)
-        volts = load_volts(voltage_path)
-        spike_path = voltage_path.with_name(voltage_path.name.replace('volts','spikes'))
-        spikes = load_spikes(spike_path)
-        if np.all([char == '0' for char in simulation_id]):
-            plot_traces(volts, spikes, images_path / (simulations_stem_prefix + 'simple'), nnum)
-        if np.all([char == '1' for char in simulation_id]):
-            plot_traces(volts, spikes, images_path / (simulations_stem_prefix + 'full'), nnum)
-        if np.random.binomial(1, 0.001):
-            plot_traces(volts, spikes, images_path / (simulations_stem_prefix + simulation_id), nnum)
     # Plot results
     df_path = Path(simulations_root / (simulations_stem_prefix + 'dataframe.pkl'))
     df = pd.read_pickle(df_path)
-    #pairplots(df, images_path, simulations_stem_prefix)
-    #boxplots(df, images_path, simulations_stem_prefix)
-    #hueplots(df, images_path, simulations_stem_prefix)
-    #scatterplots(df, images_path, simulations_stem_prefix)
+    pairplots(df, images_path, simulations_stem_prefix)
+    boxplots(df, images_path, simulations_stem_prefix)
+    hueplots(df, images_path, simulations_stem_prefix)
+    scatterplots(df, images_path, simulations_stem_prefix)

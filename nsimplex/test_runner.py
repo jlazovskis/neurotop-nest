@@ -1,4 +1,5 @@
 from nsimplex_sim_runner import build_matrices, triu_from_array, run_simulations, column_names
+from nsimplex_sim_runner import load_volts, _volt_array, load_spikes, _spike_trains
 from unittest import TestCase
 from pathlib import Path
 import numpy as np
@@ -37,18 +38,6 @@ class TestAdjacencyMatrices(TestCase):
 
 def get_voltage_files(save_path):
     return sorted(list((Path('simulations') / save_path.parent).glob(save_path.name + "*volts.npy")))
-
-def load_volts(voltage_path):
-    volts_array = np.load(voltage_path, allow_pickle=True)
-    volts = {'senders':volts_array[0], 'times':volts_array[1], 'V_m':volts_array[2]}
-    return volts
-
-def _volt_array(volt_dictionary, nnum):
-    array = []
-    for j in range(nnum):
-        v_ind = np.where(volt_dictionary['senders'] == j+1)[0]
-        array.append(volt_dictionary['V_m'][v_ind])
-    return np.stack(array)
 
 def compare_voltage_traces(args1, args2):
     vt1 = get_voltage_files(Path(args1['save_path']))
@@ -132,3 +121,25 @@ class TestSimulations(TestCase):
         self.assertEqual(df1.shape, (8,24))
         df2 = pd.read_pickle(Path('simulations') / (args1['save_path'] + 'dataframe.pkl'))
         self.assertTrue(df2.equals(df1))
+
+
+class TestSpikeTrains(TestCase):
+    def test_empty_spike_train(self):
+        nnum = 5
+        binsize = 10
+        simlength = 100
+        spike_dictionary = {'senders': np.array([]), 'times': np.array([])}
+        sts = _spike_trains(spike_dictionary, nnum, binsize, simlength)
+        self.assertTrue(not np.any(sts))
+        self.assertEqual(sts.shape, (5,10))
+
+    def test_spike_train(self):
+        nnum = 5
+        binsize = 10
+        simlength = 100
+        spike_dictionary = {'senders': np.array([1, 5]), 'times': np.array([5, 95])}
+        sts = _spike_trains(spike_dictionary, nnum, binsize, simlength)
+        result = np.zeros((5,10))
+        result[0, 0] = 1
+        result[4, 9] = 1
+        np.testing.assert_equal(sts, result)
