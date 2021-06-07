@@ -1,6 +1,8 @@
-from reliability_measures import gaussian_reliability, delayed_reliability
 from unittest import TestCase
 import numpy as np
+
+from reliability_measures import gaussian_reliability, delayed_reliability
+
 
 class TestGaussianReliability(TestCase):
     def test_reliable(self):
@@ -14,6 +16,7 @@ class TestGaussianReliability(TestCase):
     def test_smoothing(self):
         spike_trains = [np.random.normal(1, size = 500).reshape((5,100)) for i in range(10)]
         np.testing.assert_array_less(gaussian_reliability(spike_trains,1), gaussian_reliability(spike_trains,4))
+
 
 class TestDelayedReliability(TestCase):
     def test_reliable(self):

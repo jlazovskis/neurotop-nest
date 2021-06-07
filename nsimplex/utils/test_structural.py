@@ -1,4 +1,6 @@
 import numpy as np
+from unittest import TestCase
+
 from structural import (
     indegree_range,
     outdegree_range,
@@ -8,7 +10,6 @@ from structural import (
     maximal_simplex_count,
     bidirectional_edges
 )
-from unittest import TestCase
 
 
 class TestRanges(TestCase):
@@ -51,6 +52,7 @@ class TestRanges(TestCase):
         self.assertEqual(bidegree_range(self.array1), 0)
         self.assertEqual(bidegree_range(self.array2), 0)
         self.assertEqual(bidegree_range(self.array3), 1)
+
 
 class TestDirectionality(TestCase):
     def setUp(self):
@@ -104,6 +106,7 @@ class TestMaximalCount(TestCase):
         self.assertEqual(maximal_simplex_count(self.array1), 1)
         self.assertEqual(maximal_simplex_count(self.array2), 24)
         self.assertEqual(maximal_simplex_count(self.array3), 2)
+
 
 class TestBidirectionalEdges(TestCase):
     def setUp(self):

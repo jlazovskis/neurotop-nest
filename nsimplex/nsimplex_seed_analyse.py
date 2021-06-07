@@ -8,8 +8,7 @@ from datetime import datetime                                               # Fo
 from pathlib import Path                                                    # For file management
 
 from utils.reliability_measures import gaussian_reliability, delayed_reliability
-from nsimplex_analyse import _spike_trains, load_spikes
-
+from utils.data import load_spikes, _spike_trains
 
 # Formatted printer for messages
 def ntnstatus(message):

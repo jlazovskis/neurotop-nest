@@ -1,9 +1,11 @@
 from unittest import TestCase
-from uniformity_measures import (average_pearson, average_cosine_distance, spike_range, average_pearson_directional,
-                                 pearson_range, pearson_matrix, spike_count)
 import numpy as np
 
+from uniformity_measures import (average_pearson, average_cosine_distance, spike_range, average_pearson_directional,
+                                 pearson_range, pearson_matrix, spike_count)
+
 # Uniformity measures tests
+
 
 class CorrelationTest(TestCase):
     def test_average_pearson(self):
@@ -58,6 +60,7 @@ class CorrelationTest(TestCase):
         result = 2.
         self.assertAlmostEqual(pearson_range(array1), result)
 
+
 class CosineDistanceTest(TestCase):
     def test_cosine_distance(self):
         array1 = np.array([
@@ -74,6 +77,7 @@ class CosineDistanceTest(TestCase):
             [-1,-2,-3,-4,-5]
         ])
         self.assertAlmostEqual(average_cosine_distance(array3), -1.)
+
 
 class SpikeTrainRangeTest(TestCase):
     def test_st_range(self):
