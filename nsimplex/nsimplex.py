@@ -101,19 +101,19 @@ def simulate(args):
     # Connect stimulus to circuit
     ntnstatus('Creating stimulus for circuit')
     fire = firing_pattern[0]
-    if args.stimulus_type == 'poisson' or 'poisson_parrot':
+    if args.stimulus_type == 'poisson' or args.stimulus_type == 'poisson_parrot':
         stimuli = nest.Create('poisson_generator', n=len(fibres))
         nest.SetStatus((stimuli[int(fire[0])],), params={
              'start': round(float(fire[1]), 1),
              'stop': round(float(fire[2]), 1),
              'rate': float(fire[3])})
-    if args.stimulus_type == 'dc':
+    elif args.stimulus_type == 'dc':
         stimuli = nest.Create('dc_generator', n=len(fibres))
         nest.SetStatus((stimuli[int(fire[0])],), params={
              'start': round(float(fire[1]),1),
              'stop': round(float(fire[2]),1),
              'amplitude': float(fire[3])})
-    if args.stimulus_type == 'ac':
+    elif args.stimulus_type == 'ac':
         stimuli = nest.Create('ac_generator', n=len(fibres))
         nest.SetStatus((stimuli[int(fire[0])],), params={
              'start': round(float(fire[1]), 1),
