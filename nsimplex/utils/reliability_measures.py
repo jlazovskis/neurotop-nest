@@ -16,19 +16,25 @@ um_spec.loader.exec_module(um)
 
 def gaussian_reliability(spike_trains_list: List[np.ndarray], gaussian_variance: float):
     convolved_signals = np.stack([gaussian_filter1d(spike_trains.astype(float), gaussian_variance) for spike_trains in spike_trains_list], axis = 0)
-    result = [um.average_cosine_distance(convolved_signals[:,i,:]) for i in range(convolved_signals.shape[1])]
-    return np.array(result)
+    correlation_matrices = [np.triu(um.cosine_matrix(convolved_signals[:,i,:]), 1) for i in range(convolved_signals.shape[1])]
+    nsamples = len(spike_trains_list)
+    npairs = nsamples * (nsamples - 1) / 2
+    result = [np.sum(correlation_matrix)/npairs for correlation_matrix in correlation_matrices]
+    return np.array(result), correlation_matrices
 
 def delayed_reliability(spike_trains_list: List[np.ndarray], shift):
     result = []
     nsamples = len(spike_trains_list)
+    npairs = nsamples * (nsamples - 1)/2
+    correlation_matrices = []
     for neuron in range(spike_trains_list[0].shape[0]):
-        neuron_values = []
+        correlation_matrix = np.zeros((nsamples,nsamples))
         for i in range(nsamples):
             for j in range(i+1, nsamples):
-                neuron_values.append(cross_correlation_average(spike_trains_list[i][neuron,:], spike_trains_list[j][neuron,:], shift))
-        result.append(np.mean(neuron_values))
-    return np.array(result)
+                correlation_matrix[i,j] = cross_correlation_average(spike_trains_list[i][neuron,:], spike_trains_list[j][neuron,:], shift)
+        correlation_matrices.append(correlation_matrix)
+    result = [np.sum(correlation_matrix)/npairs for correlation_matrix in correlation_matrices]
+    return np.array(result), correlation_matrices
 
 def cross_correlation_average(st1, st2, shift):
     values = []

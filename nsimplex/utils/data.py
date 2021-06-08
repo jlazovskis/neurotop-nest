@@ -28,7 +28,6 @@ def _spike_trains(spikes_dictionary, nnum, binsize, simlength):
     for j in range(nnum):
         try:
             sp_ind = np.where(spikes_dictionary['senders'] == j+1)[0]
-            print(sp_ind)
             times = np.array(spikes_dictionary['times'][sp_ind])
             st = [np.count_nonzero(np.logical_and(times < node + binsize, times > node))
                   for node in list(range(0, simlength, binsize))]
