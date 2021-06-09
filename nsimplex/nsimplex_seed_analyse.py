@@ -31,7 +31,8 @@ def compute_reliabilities(path_df, _args):
     elif _args.reliability_type == 'CC':
         delayed_sts = []
         for voltage_path in path_df['path']:
-            delayed_sts.append(_spike_trains(load_spikes(spike_path), _args.n, _args.delayed_binsize, _args.time))
+            spike_path = (voltage_path.replace('volts', 'spikes'))
+            delayed_sts.append(_spike_trains(load_spikes(spike_path), _args.n, _args.crosscor_binsize, _args.time))
         return delayed_reliability(delayed_sts, _args.shift)
     else:
         raise ValueError("Reliability " + args.reliability_type + " not available."
