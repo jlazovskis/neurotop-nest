@@ -63,7 +63,7 @@ def ntnsubstatus(message):
 ntnstatus('Creating Directed ER graph')
 G = nx.erdos_renyi_graph(nnum,args.density,directed=True)
 adj = nx.to_scipy_sparse_matrix(G,format='coo')
-np.save(root+"structure/"+simulation_id+".npy",adj)
+sparse.save_npz(root+"structure/"+simulation_id+".npz",adj)
 adj = adj.toarray()
 exc_vert = [np.random.choice([0, 1], p=[args.inh_prop, 1-args.inh_prop]) for i in range(nnum)]
 
